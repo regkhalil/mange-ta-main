@@ -10,10 +10,8 @@ import os
 import pickle
 from typing import Any, Dict, List, Tuple
 
-import kagglehub
 import pandas as pd
 import scipy.sparse
-from kagglehub import KaggleDatasetAdapter
 from scipy.sparse import csr_matrix
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
@@ -21,42 +19,6 @@ from sklearn.preprocessing import MinMaxScaler
 
 # Set up logger for this module
 logger = logging.getLogger(__name__)
-
-
-def load_recipe_data(file_path: str = "RAW_recipes.csv", local_data_dir: str = "data") -> pd.DataFrame:
-    """
-    Load recipe data from local file or download from Kaggle if not available.
-
-    Args:
-        file_path (str): Name of the CSV file to load
-        local_data_dir (str): Local directory to store/load data
-
-    Returns:
-        pd.DataFrame: Recipe data with all original columns
-    """
-    local_file_path = os.path.join(local_data_dir, file_path)
-
-    if os.path.exists(local_file_path):
-        logger.info(f"Loading existing file from {local_file_path}")
-        df = pd.read_csv(local_file_path)
-        logger.info(f"Loaded {len(df)} recipes")
-    else:
-        logger.info("File not found locally. Downloading from Kaggle...")
-        os.makedirs(local_data_dir, exist_ok=True)
-
-        try:
-            df = kagglehub.dataset_load(
-                KaggleDatasetAdapter.PANDAS,
-                "shuyangli94/food-com-recipes-and-user-interactions",
-                file_path,
-            )
-            df.to_csv(local_file_path, index=False)
-            logger.info(f"Downloaded and saved {len(df)} recipes")
-        except Exception as e:
-            logger.error(f"Failed to download data from Kaggle: {str(e)}")
-            raise
-
-    return df
 
 
 def preprocess_text_features(df: pd.DataFrame) -> pd.DataFrame:
@@ -231,3 +193,26 @@ def save_preprocessed_data(
     except Exception as e:
         logger.error(f"Failed to save preprocessed data: {str(e)}")
         raise
+
+
+def run_similarity_matrix_prep(dataframe, local_data_dir: str, similarity_matrix_path: str) -> None:
+    """
+    Run the complete similarity matrix preparation pipeline.
+
+    Args:
+        file_path (str): Name of the CSV file to load
+        local_data_dir (str): Local directory to store/load data
+        similarity_matrix_path (str): Path to save the similarity matrix
+    """
+
+    # Preprocess text features
+    df_processed = preprocess_text_features(dataframe)
+
+    # Create feature vectors
+    combined_features, vectorizers = create_feature_vectors(df_processed)
+
+    # Create ID mappings
+    id_to_index, index_to_id = create_id_mappings(df_processed)
+
+    # Save preprocessed data
+    save_preprocessed_data(combined_features, id_to_index, index_to_id, vectorizers, similarity_matrix_path)

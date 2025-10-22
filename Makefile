@@ -43,8 +43,8 @@ install:
 
 # Clean generated files
 clean:
-	rm -rf data/*.pkl
-	rm -rf logs/*.log
+	rm -rf data/*
+	rm -rf logs/*
 
 # Run tests (placeholder for future tests)
 test:
