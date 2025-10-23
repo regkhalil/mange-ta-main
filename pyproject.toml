@@ -9,6 +9,7 @@ dependencies = [
     "pandas>=2.3.3",
     "scikit-learn>=1.7.2",
     "streamlit>=1.50.0",
+    "visidata>=3.3",
 ]
 
 [dependency-groups]

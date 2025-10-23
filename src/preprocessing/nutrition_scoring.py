@@ -57,7 +57,7 @@ def normalize_scores(raw_scores: pd.Series, min_val: float = 10, max_val: float 
     logger.info("Normalizing nutrition scores")
     valid_scores = raw_scores.dropna()
     p1, p99 = np.percentile(valid_scores, [1, 99])
-    
+
     logger.info(f"Score percentiles - p1: {p1:.2f}, p99: {p99:.2f}")
 
     def scale(x):
@@ -101,16 +101,16 @@ def score_nutrition(df: pd.DataFrame, nutrition_col: str = "nutrition") -> pd.Da
     # parse and compute final scores internally
     logger.info(f"Processing {len(df)} recipes")
     raw_scores = df[nutrition_col].apply(lambda x: compute_raw_score(parse_nutrition_entry(x)))
-    
+
     valid_count = raw_scores.notna().sum()
     logger.info(f"Computed final scores for {valid_count}/{len(df)} recipes")
-    
+
     df["nutrition_score"] = normalize_scores(raw_scores)
     df["nutrition_grade"] = df["nutrition_score"].apply(assign_grade)
-    
+
     # Log grade distribution
     grade_counts = df["nutrition_grade"].value_counts().sort_index()
     logger.info(f"Grade distribution: {grade_counts.to_dict()}")
     logger.info("Nutrition scoring completed")
-    
+
     return df
