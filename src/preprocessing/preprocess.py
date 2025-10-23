@@ -8,6 +8,7 @@ from prepare_similarity_matrix module to load, process, and save recipe data.
 import os
 
 import prepare_similarity_matrix
+import prepare_vege_recipes
 import preprocess_utils
 
 
@@ -26,6 +27,9 @@ def main() -> None:
 
     # Load data
     df = preprocess_utils.load_recipe_data(os.path.join(local_data_dir, dataset_filename), local_data_dir)
+
+    # Add vegetarian classification
+    df = prepare_vege_recipes.prepare_vegetarian_classification(df)
 
     # Run similarity matrix preparation
     prepare_similarity_matrix.run_similarity_matrix_prep(df, local_data_dir, similarity_matrix_path)
