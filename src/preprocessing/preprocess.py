@@ -56,6 +56,7 @@ def main() -> None:
             "n_ingredients",
             "nutrition_score",
             "nutrition_grade",
+            "is_vegetarian",
         ]
     ]
     output_csv_path = os.path.join(local_data_dir, "preprocessed_recipes.csv")
