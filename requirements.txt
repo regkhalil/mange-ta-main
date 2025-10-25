@@ -1,0 +1,26 @@
+# Application Streamlit Mangetamain - Dépendances Production
+
+# Framework principal
+streamlit==1.28.1
+
+# Traitement de données
+pandas==2.1.1
+numpy==1.26.2
+
+# Machine Learning / Recommandations
+scikit-learn==1.3.2
+
+# Visualisations
+plotly==5.17.0
+
+# Utilitaires
+python-dotenv==1.0.0
+
+# Téléchargement de données (pour le prétraitement)
+kagglehub==0.3.13
+
+# Dépendances de développement (optionnel)
+# pytest==7.4.3
+# pytest-cov==4.1.0
+# ruff==0.1.8
+# sphinx==7.2.6

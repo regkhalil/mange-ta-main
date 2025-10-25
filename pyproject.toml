@@ -1,16 +1,32 @@
 [project]
 name = "mange-ta-main"
 version = "0.1.0"
-description = "Add your description here"
+description = "Application web de recherche et recommandation de recettes"
+authors = [
+    {name = "Équipe Mangetamain", email = "contact@mangetamain.fr"}
+]
 readme = "README.md"
 requires-python = ">=3.13"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.13",
+]
 dependencies = [
     "kagglehub[pandas-datasets]>=0.3.13",
     "pandas>=2.3.3",
+    "plotly>=5.17.0",
+    "python-dotenv>=1.0.0",
     "scikit-learn>=1.7.2",
     "streamlit>=1.50.0",
     "visidata>=3.3",
 ]
+
+[project.urls]
+Homepage = "https://github.com/regkhalil/mange-ta-main"
+Repository = "https://github.com/regkhalil/mange-ta-main"
+Documentation = "https://github.com/regkhalil/mange-ta-main/wiki"
 
 [dependency-groups]
 dev = [
@@ -24,6 +40,7 @@ target-version = "py313"
 
 [tool.ruff.lint]
 select = ["E", "F", "I"]  # basic errors, pyflakes, isort
+ignore = ["E501"]  # Ignorer les lignes trop longues (souvent du HTML/CSS inline)
 
 [tool.ruff.format]
 quote-style = "double"
