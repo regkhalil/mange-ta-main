@@ -20,7 +20,7 @@ def load_recipes(data_dir: str = None) -> pd.DataFrame:
     """
     if data_dir is None:
         # Chemin relatif depuis le dossier de l'application
-        data_dir = Path(__file__).parent.parent.parent / "Donnees"
+        data_dir = Path.cwd() / "data"
 
     # Vérifier si le fichier preprocessed existe
     preprocessed_path = Path(data_dir) / "preprocessed_recipes.csv"
@@ -163,7 +163,7 @@ def load_users(data_dir: str = None) -> pd.DataFrame:
         DataFrame avec les profils utilisateurs
     """
     if data_dir is None:
-        data_dir = Path(__file__).parent.parent.parent / "Donnees"
+        data_dir = Path.cwd() / "data"
 
     users_path = Path(data_dir) / "PP_users.csv"
     df = pd.read_csv(users_path)
@@ -189,7 +189,7 @@ def load_interactions(data_dir: str = None, split: str = "train") -> pd.DataFram
         DataFrame des interactions
     """
     if data_dir is None:
-        data_dir = Path(__file__).parent.parent.parent / "Donnees"
+        data_dir = Path.cwd() / "data"
 
     interactions_path = Path(data_dir) / f"interactions_{split}.csv"
     df = pd.read_csv(interactions_path)

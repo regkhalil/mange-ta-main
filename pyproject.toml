@@ -15,6 +15,7 @@ classifiers = [
 ]
 dependencies = [
     "kagglehub[pandas-datasets]>=0.3.13",
+    "matplotlib>=3.10.7",
     "pandas>=2.3.3",
     "plotly>=5.17.0",
     "python-dotenv>=1.0.0",

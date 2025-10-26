@@ -8,14 +8,9 @@ via st.query_params.
 
 import ast
 import logging
-import sys
-from pathlib import Path
 
 import pandas as pd
 import streamlit as st
-
-# Ajout du chemin parent pour les imports locaux
-sys.path.append(str(Path(__file__).parent.parent))
 
 from services.data_loader import load_recipes
 from services.recommender import get_recommender

@@ -2,14 +2,10 @@
 
 import ast
 import logging
-import sys
-from pathlib import Path
 
 import pandas as pd
 import plotly.express as px
 import streamlit as st
-
-sys.path.append(str(Path(__file__).parent.parent))
 
 from components.filters_panel import render_filters_panel
 from services.data_loader import filter_recipes, load_recipes

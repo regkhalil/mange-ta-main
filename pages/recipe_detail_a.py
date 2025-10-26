@@ -1,11 +1,6 @@
 """Page de détail A - Alterne avec B pour forcer le scroll."""
 
-import sys
-from pathlib import Path
-
 import streamlit as st
-
-sys.path.append(str(Path(__file__).parent.parent))
 
 from services.data_loader import load_recipes
 from services.recommender import get_recommender

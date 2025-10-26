@@ -18,7 +18,7 @@ help:
 
 # Run preprocessing pipeline
 preprocess:
-	uv run python src/preprocessing/preprocess.py
+	uv run python preprocessing/preprocess.py
 
 # Code quality - combined linting and formatting
 fix: lint format
@@ -54,3 +54,7 @@ test:
 # Development setup
 dev-setup: install
 	@echo "Development environment ready"
+
+# Start the app
+start:
+	uv run streamlit run app.py

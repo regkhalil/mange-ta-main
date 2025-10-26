@@ -115,7 +115,7 @@ def render_filters_panel(in_sidebar=True):
             # noqa: E501
             grade_html += (
                 f'<div style="background-color: {color}; color: white; font-weight: bold; '
-                f'padding: 6px 10px; border-radius: 4px; font-size: 12px; text-align: center; '
+                f"padding: 6px 10px; border-radius: 4px; font-size: 12px; text-align: center; "
                 f'flex: 1; cursor: default;" title="{label}">{grade}</div>'
             )
         grade_html += "</div>"

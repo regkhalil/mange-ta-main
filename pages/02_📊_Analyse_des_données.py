@@ -29,19 +29,19 @@ def load_data() -> Tuple[Optional[pd.DataFrame], Optional[pd.DataFrame]]:
     """
     try:
         # Chemins vers les fichiers de données
-        data_dir = Path(__file__).parent.parent.parent / "Donnees"
-        recipes_path = data_dir / "PP_recipes.csv"
+        data_dir = Path.cwd() / "data"
+        recipes_path = data_dir / "preprocessed_recipes.csv"
         interactions_path = data_dir / "RAW_interactions.csv"
 
         # Vérifier l'existence des fichiers
         if not recipes_path.exists():
             st.error(f"❌ Fichier introuvable: {recipes_path}")
-            st.info("💡 Placez le fichier PP_recipes.csv dans le dossier Donnees/")
+            st.info("💡 Placez le fichier PP_recipes.csv dans le dossier data/")
             return None, None
 
         if not interactions_path.exists():
             st.error(f"❌ Fichier introuvable: {interactions_path}")
-            st.info("💡 Placez le fichier RAW_interactions.csv dans le dossier Donnees/")
+            st.info("💡 Placez le fichier RAW_interactions.csv dans le dossier data/")
             return None, None
 
         # Charger les recettes
