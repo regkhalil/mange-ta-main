@@ -5,6 +5,7 @@
 # Default target
 help:
 	@echo "Available targets:"
+	@echo "  start         - Run the Streamlit app"
 	@echo "  preprocess    - Run the recipe preprocessing pipeline"
 	@echo "  fix           - Run both linting and formatting (lint + format)"
 	@echo "  lint          - Run ruff linter and fix issues"
