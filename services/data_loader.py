@@ -38,12 +38,13 @@ def load_recipes(data_dir: str = None) -> pd.DataFrame:
             },
         )
 
-        # Merger avec RAW_recipes pour récupérer la description
+        # Merger avec RAW_recipes pour récupérer la description (fallback si pas dans preprocessed)
         try:
-            raw_recipes_path = Path(data_dir) / "RAW_recipes.csv"
-            if raw_recipes_path.exists():
-                raw_df = pd.read_csv(raw_recipes_path, usecols=["id", "description"])
-                df = df.merge(raw_df, on="id", how="left")
+            if 'description' not in df.columns:
+                raw_recipes_path = Path(data_dir) / "RAW_recipes.csv"
+                if raw_recipes_path.exists():
+                    raw_df = pd.read_csv(raw_recipes_path, usecols=["id", "description"])
+                    df = df.merge(raw_df, on="id", how="left")
         except Exception as e:
             print(f"Impossible de charger les descriptions: {e}")
 
