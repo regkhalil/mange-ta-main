@@ -469,6 +469,10 @@ def page_recherche(recipes_df: pd.DataFrame, recommender) -> None:
     # Filtrer par recherche textuelle si une requête existe
     if search_query and search_query.strip():
         filtered_recipes = _apply_keyword_search(filtered_recipes, search_query)
+    else:
+        # Trier par popularité par défaut (average_rating décroissant) quand il n'y a pas de recherche
+        if "average_rating" in filtered_recipes.columns:
+            filtered_recipes = filtered_recipes.sort_values("average_rating", ascending=False, na_position="last")
 
     # Afficher le nombre de résultats
     total_results = len(filtered_recipes)
