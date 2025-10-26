@@ -5,6 +5,7 @@
 # Default target
 help:
 	@echo "Available targets:"
+	@echo "  dev           - Install dependencies, prepare the data, and run the application"
 	@echo "  start         - Run the Streamlit app"
 	@echo "  preprocess    - Run the recipe preprocessing pipeline"
 	@echo "  fix           - Run both linting and formatting (lint + format)"
@@ -52,10 +53,9 @@ test:
 	@echo "No tests configured yet"
 	# uv run pytest tests/
 
-# Development setup
-dev-setup: install
-	@echo "Development environment ready"
-
 # Start the app
 start:
 	uv run streamlit run app.py
+
+dev: install preprocess start
+	@echo "Development environment ready"
