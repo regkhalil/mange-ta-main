@@ -212,15 +212,8 @@ def load_recipes(data_dir: str = None) -> pd.DataFrame:
 
     if preprocessed_path.exists():
         # Load enriched preprocessed data (uses read_preprocessed_recipes)
+        # Note: This already includes description, nutrition, tags, etc. from preprocessing
         df = read_preprocessed_recipes(data_dir=data_dir)
-
-        # Merge with RAW_recipes to get description
-        try:
-            if (data_dir_path / "RAW_recipes.csv").exists():
-                raw_df = read_raw_recipes(data_dir=data_dir, usecols=["id", "description"])
-                df = df.merge(raw_df, on="id", how="left")
-        except Exception as e:
-            print(f"Unable to load descriptions: {e}")
 
         # Create derived columns for UI (if they don't exist)
         if "ingredientCount" not in df.columns and "n_ingredients" in df.columns:
@@ -246,27 +239,8 @@ def load_recipes(data_dir: str = None) -> pd.DataFrame:
             else:
                 df["isVegetarian"] = False
 
-        # Create Nutri-Score grade if nutrition_score exists
-        if "nutrition_grade" not in df.columns and "nutrition_score" in df.columns:
-            # Convert score to grade (A-E)
-            def score_to_grade(score):
-                if pd.isna(score):
-                    return "C"  # Default
-                score = float(score)
-                if score <= 40:
-                    return "A"
-                elif score <= 55:
-                    return "B"
-                elif score <= 70:
-                    return "C"
-                elif score <= 80:
-                    return "D"
-                else:
-                    return "E"
-
-            df["nutrition_grade"] = df["nutrition_score"].apply(score_to_grade)
-        elif "nutrition_grade" not in df.columns:
-            df["nutrition_grade"] = "C"  # Default grade
+        # Note: nutrition_score, nutrition_grade, and nutrition array 
+        # are already computed in preprocessing - no need to calculate here
 
         # Add average rating of recipes from interactions (OPTIMIZED)
         if "average_rating" not in df.columns:
