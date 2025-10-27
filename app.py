@@ -289,7 +289,7 @@ def render_recipe_card(recipe: pd.Series, recipe_id: int) -> None:
         nutri_color = NUTRISCORE_COLORS.get(nutri_grade, "#7f8c8d")
 
         is_veg = recipe.get("is_vegetarian", False)
-        prep_time = int(recipe.get("totalTime", recipe.get("minutes", 30)))
+        prep_time = int(recipe.get("minutes", 30))
         n_ingredients = int(recipe.get("n_ingredients", 0))
 
         tags = []

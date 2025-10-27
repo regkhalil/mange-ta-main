@@ -77,7 +77,7 @@ def render_recipe_card_enhanced(recipe: pd.Series, show_similar_button: bool = T
                 f"""
             <div style='text-align: center; padding: 0.5rem; background: #f0f2f6; border-radius: 6px;'>
                 <div style='font-size: 1.2rem;'>⏱️</div>
-                <div style='font-size: 0.85rem; font-weight: bold;'>{int(recipe["totalTime"])} min</div>
+                <div style='font-size: 0.85rem; font-weight: bold;'>{int(recipe["minutes"])} min</div>
             </div>
             """,
                 unsafe_allow_html=True,

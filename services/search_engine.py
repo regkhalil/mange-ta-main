@@ -42,7 +42,7 @@ def search_recipes(
     """
     # Créer le masque de filtrage
     mask = (
-        (recipes_df["totalTime"] <= prep_time_max)
+        (recipes_df["minutes"] <= prep_time_max)
         & (recipes_df["n_ingredients"] <= ingredients_max)
         & (recipes_df["calories"] <= calories_max)
     )
@@ -96,7 +96,7 @@ def search_recipes(
     elif sort_by == "health_score" and "nutrition_score" in filtered_df.columns:
         filtered_df = filtered_df.sort_values("nutrition_score", ascending=False, na_position="last")
     elif sort_by == "prep_time":
-        filtered_df = filtered_df.sort_values("totalTime", ascending=True)
+        filtered_df = filtered_df.sort_values("minutes", ascending=True)
     else:
         # Tri par défaut : ID ou tendance
         pass

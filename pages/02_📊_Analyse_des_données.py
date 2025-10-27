@@ -56,9 +56,6 @@ def load_data() -> Tuple[Optional[pd.DataFrame], Optional[pd.DataFrame]]:
             if col in recipes_df.columns:
                 recipes_df[col] = pd.to_numeric(recipes_df[col], errors="coerce")
 
-        # Renommer les colonnes si nécessaire
-        if "totalTime" in recipes_df.columns:
-            recipes_df["minutes"] = recipes_df["totalTime"]
         if "stepsCount" in recipes_df.columns:
             recipes_df["n_steps"] = recipes_df["stepsCount"]
 

@@ -109,7 +109,7 @@ class TestLoadingFunctions:
 
     def test_load_recipes_has_required_columns(self, recipes_df):
         """Test that loaded recipes have all required columns."""
-        required_columns = ["id", "n_ingredients", "stepsCount", "totalTime", "calories", "is_vegetarian"]
+        required_columns = ["id", "n_ingredients", "stepsCount", "minutes", "calories", "is_vegetarian"]
         for col in required_columns:
             assert col in recipes_df.columns, f"Missing required column: {col}"
 
@@ -117,7 +117,7 @@ class TestLoadingFunctions:
         """Test that loaded recipes have correct data types."""
         assert pd.api.types.is_integer_dtype(recipes_df["id"]) or pd.api.types.is_float_dtype(recipes_df["id"])
         assert pd.api.types.is_numeric_dtype(recipes_df["n_ingredients"])
-        assert pd.api.types.is_numeric_dtype(recipes_df["totalTime"])
+        assert pd.api.types.is_numeric_dtype(recipes_df["minutes"])
         assert pd.api.types.is_numeric_dtype(recipes_df["calories"])
 
     def test_load_recipes_has_nutrition_grade(self, recipes_df):
@@ -153,13 +153,13 @@ class TestDataConsistency:
         """Test that recipes have valid value ranges."""
         # Test that numeric columns don't have negative values where inappropriate
         assert (recipes_df["n_ingredients"] > 0).all(), "Found recipes with 0 or negative ingredients"
-        assert (recipes_df["totalTime"] > 0).all(), "Found recipes with 0 or negative time"
+        assert (recipes_df["minutes"] > 0).all(), "Found recipes with 0 or negative time"
         assert (recipes_df["calories"] >= 0).all(), "Found recipes with negative calories"
 
     def test_recipes_statistics(self, recipes_df):
         """Test recipe statistics are reasonable."""
         avg_ingredients = recipes_df["n_ingredients"].mean()
-        avg_time = recipes_df["totalTime"].mean()
+        avg_time = recipes_df["minutes"].mean()
         avg_calories = recipes_df["calories"].mean()
 
         # Sanity checks

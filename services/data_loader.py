@@ -322,9 +322,6 @@ def load_recipes(data_dir: str = None) -> pd.DataFrame:
     if "stepsCount" not in df.columns and "n_steps" in df.columns:
         df["stepsCount"] = df["n_steps"]
 
-    if "totalTime" not in df.columns and "minutes" in df.columns:
-        df["totalTime"] = df["minutes"].clip(5, 300)  # Limit between 5 and 300 minutes
-
     # Note: nutrition_score, nutrition_grade, nutrition array, and calories
     # are already computed in preprocessing - no need to calculate here
     # Average rating can be added as a separate function when needed
@@ -387,7 +384,7 @@ def get_recipe_details(recipe_id: int, recipes_df: pd.DataFrame) -> dict:
         "ingredients": len(recipe["ingredient_tokens"]),
         "steps": len(recipe["steps_tokens"]),
         "calories": recipe["calories"],
-        "totalTime": recipe["totalTime"],
+        "minutes": recipe["minutes"],
         "is_vegetarian": recipe["is_vegetarian"],
         "techniques": recipe["techniques"],
         "calorie_level": recipe["calorie_level"],
@@ -419,7 +416,7 @@ def filter_recipes(
     result = recipes_df.copy()
 
     # Determine time columns (try totalTime first, then minutes)
-    time_col = "totalTime" if "totalTime" in recipes_df.columns else "minutes"
+    time_col = "minutes"
 
     # Determine ingredient columns - always use n_ingredients now
     ing_col = "n_ingredients"
@@ -462,8 +459,8 @@ def get_recipe_stats(recipes_df: pd.DataFrame) -> dict:
     """
     return {
         "total_recipes": len(recipes_df),
-        "avg_prep_time": recipes_df["totalTime"].mean(),
-        "median_prep_time": recipes_df["totalTime"].median(),
+        "avg_prep_time": recipes_df["minutes"].mean(),
+        "median_prep_time": recipes_df["minutes"].median(),
         "avg_ingredients": recipes_df["n_ingredients"].mean(),
         "avg_calories": recipes_df["calories"].mean(),
         "vegetarian_count": recipes_df["is_vegetarian"].sum(),

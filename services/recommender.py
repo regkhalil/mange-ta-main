@@ -110,8 +110,8 @@ class RecipeRecommender:
 
         # Appliquer les filtres
         filtered = filtered[
-            (filtered["totalTime"] >= prep_range[0])
-            & (filtered["totalTime"] <= prep_range[1])
+            (filtered["minutes"] >= prep_range[0])
+            & (filtered["minutes"] <= prep_range[1])
             & (filtered["n_ingredients"] >= ingredients_range[0])
             & (filtered["n_ingredients"] <= ingredients_range[1])
             & (filtered["calories"] >= calories_range[0])
@@ -160,7 +160,7 @@ def format_recommendations_for_display(recommendations: List[Tuple[pd.Series, fl
                 "id": recipe["id"],
                 "name": f"Recette #{recipe['id']}",
                 "ingredients": int(recipe.get("n_ingredients", 0)),
-                "time": recipe["totalTime"],
+                "time": recipe["minutes"],
                 "calories": recipe["calories"],
                 "vegetarian": recipe["is_vegetarian"],
                 "similarity": f"{score:.2%}",

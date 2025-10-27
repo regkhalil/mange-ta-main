@@ -19,7 +19,7 @@ def render_recipe_card_mini(recipe: pd.Series) -> None:
     nutri_color = nutri_colors.get(nutri_grade, "#7f8c8d")
 
     is_veg = recipe.get("is_vegetarian", False)
-    prep_time = int(recipe.get("totalTime", recipe.get("minutes", 30)))
+    prep_time = int(recipe.get("minutes", recipe.get("minutes", 30)))
     n_ingredients = int(recipe.get("n_ingredients", 0))
 
     tags = []
@@ -184,7 +184,7 @@ def render_recipe_detail(recipes_df: pd.DataFrame, recommender, recipe_id: int, 
     st.markdown(title_html, unsafe_allow_html=True)
 
     # Badges avec informations clés
-    prep_time = int(target_recipe.get("totalTime", target_recipe.get("minutes", 30)))
+    prep_time = int(target_recipe.get("minutes", target_recipe.get("minutes", 30)))
 
     # Extract calories from nutrition array
     calories = 0
