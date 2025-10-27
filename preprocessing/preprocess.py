@@ -18,6 +18,8 @@ import nutrition_scoring
 import prepare_similarity_matrix
 import prepare_vege_recipes
 import preprocess_utils
+from text_cleaner import clean_recipe_data
+from recipe_descriptions_hybrid import enhance_recipe_descriptions
 
 logger = logging.getLogger(__name__)
 
@@ -97,23 +99,72 @@ def main() -> None:
     # Prepare nutrition score
     df_with_nutriscore = nutrition_scoring.score_nutrition(df)
 
+    # Text Enhancement: Enhance descriptions and clean all text
+    logger.info("Enhancing recipe descriptions with metadata and ingredients...")
+    df_enhanced = enhance_recipe_descriptions(
+        df_with_nutriscore,
+        original_desc_col='description',
+        time_col='minutes',
+        tags_col='tags',
+        ingredients_col='ingredients',
+        output_col='description_enhanced'
+    )
+    
+    # Replace original description with enhanced version and drop the temp column
+    df_enhanced['description'] = df_enhanced['description_enhanced']
+    df_enhanced = df_enhanced.drop(columns=['description_enhanced'])
+    
+    logger.info("Cleaning all text columns with proper capitalization...")
+    df_cleaned = clean_recipe_data(
+        df_enhanced,
+        clean_name=True,
+        clean_description=True,
+        clean_steps=True,
+        clean_tags=True,
+        clean_ingredients=True
+    )
+
     # Remove unneeded columns and store the final dataframe in a csv
     logger.info("Selecting relevant columns for the final preprocessed DataFrame.")
-    df_preprocessed = df_with_nutriscore[
+    # Only select the cleaned columns and other needed columns
+    # Drop original unmodified columns (name, description, steps, tags, ingredients)
+    df_preprocessed = df_cleaned[
         [
-            "name",
+            "name_cleaned",
             "id",
             "minutes",
+            "tags_cleaned",
             "n_steps",
-            "steps",
-            "description",
-            "ingredients",
+            "steps_cleaned",
+            "description_cleaned",
+            "ingredients_cleaned",
             "n_ingredients",
+            "nutrition",
             "nutrition_score",
             "nutrition_grade",
             "is_vegetarian",
         ]
+    ].copy()
+    
+    # Rename cleaned columns back to standard names for the app
+    df_preprocessed.columns = [
+        "name",
+        "id",
+        "minutes",
+        "tags",
+        "n_steps",
+        "steps",
+        "description",
+        "ingredients",
+        "n_ingredients",
+        "nutrition",
+        "nutrition_score",
+        "nutrition_grade",
+        "is_vegetarian",
     ]
+    
+    logger.info(f"Final DataFrame shape: {df_preprocessed.shape}")
+    logger.info(f"Final columns: {df_preprocessed.columns.tolist()}")
     output_csv_path = os.path.join(local_data_dir, "preprocessed_recipes.csv")
     logger.info(f"Saving preprocessed DataFrame to {output_csv_path}.")
     df_preprocessed.to_csv(output_csv_path, index=False)
