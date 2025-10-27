@@ -206,81 +206,6 @@ def create_ingredients_histogram(df: pd.DataFrame) -> go.Figure:
         fig.add_annotation(text="Données non disponibles", showarrow=False)
         return fig
 
-def create_nutrition_score_histogram(df: pd.DataFrame) -> go.Figure:
-    """Crée un histogramme de la distribution des scores nutritionnels."""
-    fig = go.Figure()
-
-    if "nutrition_score" not in df.columns or df["nutrition_score"].isna().all():
-        fig.add_annotation(text="Données de score nutritionnel non disponibles", showarrow=False)
-        return fig
-
-    # Filtrer les valeurs valides
-    nutrition_scores = df["nutrition_score"].dropna()
-    
-    if len(nutrition_scores) == 0:
-        fig.add_annotation(text="Aucune donnée de score nutritionnel valide", showarrow=False)
-        return fig
-
-    # Histogramme des scores nutritionnels
-    fig.add_trace(go.Histogram(
-        x=nutrition_scores, 
-        nbinsx=40, 
-        name="Recettes", 
-        marker_color="#f093fb",
-        opacity=0.7
-    ))
-
-    # Statistiques
-    mean_val = nutrition_scores.mean()
-    median_val = nutrition_scores.median()
-    std_val = nutrition_scores.std()
-
-    # Lignes de référence
-    fig.add_vline(x=mean_val, line_dash="dash", line_color="red", 
-                  annotation_text=f"Moyenne: {mean_val:.1f}")
-    fig.add_vline(x=median_val, line_dash="dash", line_color="green", 
-                  annotation_text=f"Médiane: {median_val:.1f}")
-
-    # Zones de qualité nutritionnelle (basées sur les percentiles)
-    q25 = nutrition_scores.quantile(0.25)
-    q75 = nutrition_scores.quantile(0.75)
-    
-    # Zone de scores faibles (rouge translucide)
-    fig.add_vrect(
-        x0=nutrition_scores.min(), x1=q25,
-        fillcolor="red", opacity=0.1,
-        annotation_text="Qualité faible", annotation_position="top"
-    )
-    
-    # Zone de scores élevés (vert translucide)
-    fig.add_vrect(
-        x0=q75, x1=nutrition_scores.max(),
-        fillcolor="green", opacity=0.1,
-        annotation_text="Qualité élevée", annotation_position="top"
-    )
-
-    fig.update_layout(
-        title="Distribution des scores nutritionnels",
-        xaxis_title="Score nutritionnel",
-        yaxis_title="Nombre de recettes",
-        showlegend=False,
-        template="plotly_dark",
-        annotations=[
-            dict(
-                x=0.02, y=0.98,
-                xref="paper", yref="paper",
-                text=f"Écart-type: {std_val:.1f}<br>Min: {nutrition_scores.min():.1f}<br>Max: {nutrition_scores.max():.1f}",
-                showarrow=False,
-                bgcolor="rgba(0,0,0,0.5)",
-                font=dict(color="white", size=10)
-            )
-        ]
-    )
-
-    return fig
-
-
-
     # Histogramme
     fig.add_trace(go.Histogram(x=df["n_ingredients"].dropna(), nbinsx=30, name="Recettes", marker_color="#667eea"))
 
@@ -571,10 +496,11 @@ def main():
 
     st.markdown("---")
 
+
     # Chart 2: Distribution des scores nutritionnels
     with st.container():
-        fig = create_nutrition_score_histogram(filtered_df)
-        st.plotly_chart(fig, use_container_width=True)
+        fig_nutrition = create_nutrition_score_histogram(filtered_df)
+        st.plotly_chart(fig_nutrition, use_container_width=True)
 
     st.markdown("---")
 
@@ -585,21 +511,21 @@ def main():
 
     st.markdown("---")
 
-    # Chart 4: Top recettes
+    # Chart 3: Top recettes
     with st.container():
         fig = create_top_recipes_bar(filtered_df)
         st.plotly_chart(fig, use_container_width=True)
 
     st.markdown("---")
 
-    # Chart 5: Corrélations
+    # Chart 4: Corrélations
     with st.container():
         fig = create_correlation_heatmap(filtered_df)
         st.plotly_chart(fig, use_container_width=True)
 
     st.markdown("---")
 
-    # Chart 6: Activité utilisateurs (dans des onglets)
+    # Chart 5: Activité utilisateurs (dans des onglets)
     st.subheader("👥 Activité des utilisateurs")
 
     tab1, tab2 = st.tabs(["📊 Nombre d'interactions", "⭐ Notes moyennes"])
@@ -615,6 +541,44 @@ def main():
     # Footer
     st.markdown("---")
     st.caption("💡 Données provenant de Kaggle: Food.com Recipes and User Interactions")
+
+
+
+# Function for nutrition score histogram
+
+
+
+def create_nutrition_score_histogram(df: pd.DataFrame) -> go.Figure:
+    """Crée un histogramme de la distribution des scores nutritionnels."""
+    if 'nutrition_score' not in df.columns:
+        fig = go.Figure()
+        fig.add_annotation(text="Colonne 'nutrition_score' non trouvée", x=0.5, y=0.5, showarrow=False, font=dict(size=16, color="red"))
+        fig.update_layout(title="Distribution des scores nutritionnels - Données manquantes", template="plotly_dark")
+        return fig
+    
+    valid_scores = df['nutrition_score'].dropna()
+    if len(valid_scores) == 0:
+        fig = go.Figure()
+        fig.add_annotation(text="Aucune donnée disponible", x=0.5, y=0.5, showarrow=False, font=dict(size=16, color="orange"))
+        fig.update_layout(title="Distribution des scores nutritionnels - Aucune donnée", template="plotly_dark")
+        return fig
+    
+    fig = go.Figure()
+    fig.add_trace(go.Histogram(x=valid_scores, nbinsx=30, marker_color="#f093fb", opacity=0.7))
+    
+    mean_score = valid_scores.mean()
+    median_score = valid_scores.median()
+    std_score = valid_scores.std()
+    
+    fig.add_vline(x=mean_score, line_dash="dash", line_color="yellow", annotation_text=f"Moyenne: {mean_score:.1f}")
+    fig.add_vline(x=median_score, line_dash="dot", line_color="orange", annotation_text=f"Médiane: {median_score:.1f}")
+    
+    fig.update_layout(
+        title=f"Distribution des scores nutritionnels (n={len(valid_scores):,})",
+        xaxis_title="Score nutritionnel", yaxis_title="Nombre de recettes",
+        template="plotly_dark", showlegend=False
+    )
+    return fig
 
 
 if __name__ == "__main__":
