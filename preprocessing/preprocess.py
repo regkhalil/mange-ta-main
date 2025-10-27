@@ -96,7 +96,8 @@ def main() -> None:
         df, local_data_dir, os.path.join(local_data_dir, "similarity_matrix.pkl")
     )
 
-    # Prepare nutrition score
+    # Prepare nutrition score (Weighted Balance Score - improved algorithm)
+    logger.info("Computing nutrition scores and grades...")
     df_with_nutriscore = nutrition_scoring.score_nutrition(df)
 
     # Text Enhancement: Enhance descriptions and clean all text
