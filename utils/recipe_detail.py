@@ -6,6 +6,8 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
+from services.data_loader import read_preprocessed_recipes
+
 
 def render_recipe_card_mini(recipe: pd.Series) -> None:
     """Affiche une mini-carte de recette pour les recommandations (identique à la page d'accueil)."""
@@ -329,7 +331,8 @@ def render_recipe_detail(recipes_df: pd.DataFrame, recommender, recipe_id: int, 
                 )
 
                 # Calculate dataset statistics for reference
-                all_scores = pd.read_csv("data/preprocessed_recipes.csv", usecols=["nutrition_score"])
+                all_recipes = read_preprocessed_recipes()
+                all_scores = all_recipes[["nutrition_score"]].dropna()
                 median_score = all_scores["nutrition_score"].median()
                 q1_score = all_scores["nutrition_score"].quantile(0.25)
                 q3_score = all_scores["nutrition_score"].quantile(0.75)
