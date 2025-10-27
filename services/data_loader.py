@@ -225,13 +225,6 @@ def load_recipes(data_dir: str = None) -> pd.DataFrame:
         if "totalTime" not in df.columns and "minutes" in df.columns:
             df["totalTime"] = df["minutes"].clip(5, 300)  # Limit between 5 and 300 minutes
 
-        # Estimate calories from number of steps
-        if "calories" not in df.columns:
-            if "n_steps" in df.columns:
-                df["calories"] = (df["n_steps"] * 10 + 100).clip(50, 800)
-            else:
-                df["calories"] = 300  # Default value
-
         # Create alias for compatibility
         if "isVegetarian" not in df.columns:
             if "is_vegetarian" in df.columns:
@@ -239,29 +232,9 @@ def load_recipes(data_dir: str = None) -> pd.DataFrame:
             else:
                 df["isVegetarian"] = False
 
-        # Note: nutrition_score, nutrition_grade, and nutrition array 
+        # Note: nutrition_score, nutrition_grade, nutrition array, and calories
         # are already computed in preprocessing - no need to calculate here
-
-        # Add average rating of recipes from interactions (OPTIMIZED)
-        if "average_rating" not in df.columns:
-            try:
-                # Load interactions to calculate average rating
-                interactions_path = data_dir_path / "RAW_interactions.csv"
-                if interactions_path.exists():
-                    # Use centralized function
-                    interactions = read_raw_interactions(data_dir=data_dir, usecols=["recipe_id", "rating"])
-                    # Calculate average per recipe
-                    avg_ratings = interactions.groupby("recipe_id", as_index=False)["rating"].mean()
-                    avg_ratings.columns = ["id", "average_rating"]
-                    # Merge with recipes
-                    df = df.merge(avg_ratings, on="id", how="left")
-                    # Fill missing values with 4.0
-                    df["average_rating"] = df["average_rating"].fillna(4.0)
-                else:
-                    df["average_rating"] = 4.0
-            except Exception as e:
-                print(f"Error loading ratings: {e}")
-                df["average_rating"] = 4.0
+        # Average rating can be added as a separate function when needed
 
     else:
         # Fallback: load from PP_recipes and RAW_recipes

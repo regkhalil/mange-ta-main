@@ -183,7 +183,20 @@ def render_recipe_detail(recipes_df: pd.DataFrame, recommender, recipe_id: int, 
 
     # Badges avec informations clés
     prep_time = int(target_recipe.get("totalTime", target_recipe.get("minutes", 30)))
-    calories = int(target_recipe.get("calories", 0))
+    
+    # Extract calories from nutrition array
+    calories = 0
+    nutrition_data = target_recipe.get("nutrition")
+    if nutrition_data:
+        try:
+            if isinstance(nutrition_data, str):
+                nutrition_array = ast.literal_eval(nutrition_data)
+            else:
+                nutrition_array = nutrition_data
+            calories = int(nutrition_array[0]) if nutrition_array else 0
+        except (ValueError, IndexError, SyntaxError):
+            calories = 0
+    
     is_veg = target_recipe.get("isVegetarian", target_recipe.get("is_vegetarian", False))
     nutri_grade = target_recipe.get("nutrition_grade", "C")
     nutri_score = float(target_recipe.get("nutrition_score", 50))
@@ -332,7 +345,7 @@ def render_recipe_detail(recipes_df: pd.DataFrame, recommender, recipe_id: int, 
                 
                 # Add title above the gauge
                 st.markdown(
-                    f"<h3 style='text-align: center; font-size: 1.5rem; color: #1a1a1a; margin-bottom: -15px; margin-top: 0;'>Nutri-Score: {nutri_grade}</h3>",
+                    f"<h3 style='text-align: center; font-size: 1.5rem; color: #1a1a1a; margin-bottom: -5px; margin-top: 0;'>Nutri-Score: {nutri_grade}</h3>",
                     unsafe_allow_html=True
                 )
                 
@@ -350,9 +363,11 @@ def render_recipe_detail(recipes_df: pd.DataFrame, recommender, recipe_id: int, 
                         'reference': median_score, 
                         'increasing': {'color': "#28a745"},  # Higher = better (green)
                         'decreasing': {'color': "#dc3545"},  # Lower = worse (red)
-                        'suffix': ' vs médiane'
+                        'suffix': ' vs médiane',
+                        'position': 'bottom',
+                        'font': {'size': 14}
                     },
-                    number={'suffix': '/100', 'font': {'size': 36}},
+                    number={'suffix': '/100', 'font': {'size': 36}, 'valueformat': '.1f'},
                     gauge={
                         'axis': {
                             'range': [0, 100], 
@@ -382,8 +397,8 @@ def render_recipe_detail(recipes_df: pd.DataFrame, recommender, recipe_id: int, 
                 ))
                 
                 fig_gauge.update_layout(
-                    height=260,
-                    margin=dict(l=20, r=20, t=0, b=0),
+                    height=280,
+                    margin=dict(l=20, r=20, t=30, b=50),
                     paper_bgcolor="rgba(0,0,0,0)",
                     font={'color': "#1a1a1a", 'family': "Arial", 'size': 11}
                 )
