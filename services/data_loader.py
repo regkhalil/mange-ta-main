@@ -1,53 +1,228 @@
 """
-Service de chargement et prétraitement des données pour l'application Mangetamain.
+Data loading and preprocessing service for the Mangetamain application.
+
+This module centralizes all CSV file reading operations from the data/ folder.
+All loading functions use standardized paths and consistent parameters.
 """
 
 from pathlib import Path
+from typing import List, Optional
 
 import numpy as np
 import pandas as pd
 import streamlit as st
 
+# ============================================================================
+# CENTRALIZED CSV LOADING FUNCTIONS
+# ============================================================================
 
-@st.cache_data(show_spinner=False)  # Désactiver le spinner par défaut, on gère manuellement
-def load_recipes(data_dir: str = None) -> pd.DataFrame:
+
+def _get_data_dir(data_dir: Optional[str] = None) -> Path:
     """
-    Charge et prétraite les données de recettes depuis PP_recipes.csv et RAW_recipes.csv.
-    Merge les deux pour avoir les features ET les textes recherchables.
+    Returns the path to the data/ directory.
+
+    Args:
+        data_dir: Custom path or None to use the default path
 
     Returns:
-        DataFrame avec les colonnes prétraitées pour l'application
+        Path: Path to the data/ directory
     """
     if data_dir is None:
-        # Chemin relatif depuis le dossier de l'application
-        data_dir = Path.cwd() / "data"
+        return Path.cwd() / "data"
+    return Path(data_dir)
 
-    # Vérifier si le fichier preprocessed existe
-    preprocessed_path = Path(data_dir) / "preprocessed_recipes.csv"
+
+@st.cache_data
+def read_csv_file(
+    filename: str,
+    data_dir: Optional[str] = None,
+    usecols: Optional[List[str]] = None,
+    dtype: Optional[dict] = None,
+    nrows: Optional[int] = None,
+    **kwargs,
+) -> pd.DataFrame:
+    """
+    Centralized function to read any CSV file from the data/ folder.
+
+    This function standardizes CSV reading with error handling
+    and integrated Streamlit caching.
+
+    Args:
+        filename: Name of the CSV file (e.g., "preprocessed_recipes.csv")
+        data_dir: Directory containing the data (default: "data/")
+        usecols: List of columns to load (default: all)
+        dtype: Dictionary of column types
+        nrows: Maximum number of rows to read
+        **kwargs: Additional arguments for pd.read_csv()
+
+    Returns:
+        pd.DataFrame: DataFrame containing the data
+
+    Raises:
+        FileNotFoundError: If the file does not exist
+    """
+    data_path = _get_data_dir(data_dir)
+    file_path = data_path / filename
+
+    if not file_path.exists():
+        raise FileNotFoundError(f"File not found: {file_path}")
+
+    # Merge default parameters with kwargs
+    read_params = {"low_memory": False, **kwargs}
+
+    if usecols is not None:
+        read_params["usecols"] = usecols
+    if dtype is not None:
+        read_params["dtype"] = dtype
+    if nrows is not None:
+        read_params["nrows"] = nrows
+
+    df = pd.read_csv(file_path, **read_params)
+    return df
+
+
+@st.cache_data
+def read_preprocessed_recipes(data_dir: Optional[str] = None) -> pd.DataFrame:
+    """
+    Loads the preprocessed_recipes.csv file with optimized data types.
+
+    Args:
+        data_dir: Directory containing the data
+
+    Returns:
+        pd.DataFrame: Preprocessed recipes
+    """
+    return read_csv_file(
+        "preprocessed_recipes.csv",
+        data_dir=data_dir,
+        dtype={
+            "id": "int64",
+            "minutes": "float32",
+            "n_steps": "float32",
+            "n_ingredients": "float32",
+        },
+    )
+
+
+@st.cache_data
+def read_raw_recipes(
+    data_dir: Optional[str] = None, usecols: Optional[List[str]] = None, nrows: Optional[int] = None
+) -> pd.DataFrame:
+    """
+    Loads the RAW_recipes.csv file.
+
+    Args:
+        data_dir: Directory containing the data
+        usecols: Specific columns to load (e.g., ["id", "description"])
+        nrows: Maximum number of rows to read
+
+    Returns:
+        pd.DataFrame: Raw recipes
+    """
+    return read_csv_file("RAW_recipes.csv", data_dir=data_dir, usecols=usecols, nrows=nrows)
+
+
+@st.cache_data
+def read_pp_recipes(data_dir: Optional[str] = None, nrows: Optional[int] = None) -> pd.DataFrame:
+    """
+    Loads the PP_recipes.csv file.
+
+    Args:
+        data_dir: Directory containing the data
+        nrows: Maximum number of rows to read
+
+    Returns:
+        pd.DataFrame: Preprocessed recipes (PP format)
+    """
+    return read_csv_file("PP_recipes.csv", data_dir=data_dir, nrows=nrows)
+
+
+@st.cache_data
+def read_pp_users(data_dir: Optional[str] = None) -> pd.DataFrame:
+    """
+    Loads the PP_users.csv file.
+
+    Args:
+        data_dir: Directory containing the data
+
+    Returns:
+        pd.DataFrame: User profiles
+    """
+    return read_csv_file("PP_users.csv", data_dir=data_dir)
+
+
+@st.cache_data
+def read_raw_interactions(data_dir: Optional[str] = None, usecols: Optional[List[str]] = None) -> pd.DataFrame:
+    """
+    Loads the RAW_interactions.csv file.
+
+    Args:
+        data_dir: Directory containing the data
+        usecols: Specific columns to load (e.g., ["recipe_id", "rating"])
+
+    Returns:
+        pd.DataFrame: User-recipe interactions
+    """
+    dtype_dict = (
+        {"recipe_id": "int64", "rating": "float32"}
+        if usecols is None or set(usecols) & {"recipe_id", "rating"}
+        else None
+    )
+
+    return read_csv_file("RAW_interactions.csv", data_dir=data_dir, usecols=usecols, dtype=dtype_dict)
+
+
+@st.cache_data
+def read_interactions_split(split: str = "train", data_dir: Optional[str] = None) -> pd.DataFrame:
+    """
+    Loads a split interactions file (train/validation/test).
+
+    Args:
+        split: Type of split ("train", "validation", or "test")
+        data_dir: Directory containing the data
+
+    Returns:
+        pd.DataFrame: Interactions from the specified split
+    """
+    valid_splits = ["train", "validation", "test"]
+    if split not in valid_splits:
+        raise ValueError(f"split must be in {valid_splits}, got: {split}")
+
+    return read_csv_file(f"interactions_{split}.csv", data_dir=data_dir)
+
+
+# ============================================================================
+# EXISTING FUNCTIONS (UPDATED TO USE THE NEW CENTRALIZED FUNCTIONS)
+# ============================================================================
+
+
+@st.cache_data(show_spinner=False)  # Disable default spinner, we manage manually
+def load_recipes(data_dir: str = None) -> pd.DataFrame:
+    """
+    Loads and preprocesses recipe data from PP_recipes.csv and RAW_recipes.csv.
+    Merges both to have features AND searchable texts.
+
+    Returns:
+        DataFrame with preprocessed columns for the application
+    """
+    data_dir_path = _get_data_dir(data_dir)
+
+    # Check if preprocessed file exists
+    preprocessed_path = data_dir_path / "preprocessed_recipes.csv"
 
     if preprocessed_path.exists():
-        # Charger les données prétraitées enrichies (optimisé avec dtypes)
-        df = pd.read_csv(
-            preprocessed_path,
-            low_memory=False,
-            dtype={
-                "id": "int64",
-                "minutes": "float32",
-                "n_steps": "float32",
-                "n_ingredients": "float32",
-            },
-        )
+        # Load enriched preprocessed data (uses read_preprocessed_recipes)
+        df = read_preprocessed_recipes(data_dir=data_dir)
 
-        # Merger avec RAW_recipes pour récupérer la description
+        # Merge with RAW_recipes to get description
         try:
-            raw_recipes_path = Path(data_dir) / "RAW_recipes.csv"
-            if raw_recipes_path.exists():
-                raw_df = pd.read_csv(raw_recipes_path, usecols=["id", "description"])
+            if (data_dir_path / "RAW_recipes.csv").exists():
+                raw_df = read_raw_recipes(data_dir=data_dir, usecols=["id", "description"])
                 df = df.merge(raw_df, on="id", how="left")
         except Exception as e:
-            print(f"Impossible de charger les descriptions: {e}")
+            print(f"Unable to load descriptions: {e}")
 
-        # Créer des colonnes dérivées pour l'UI (si elles n'existent pas)
+        # Create derived columns for UI (if they don't exist)
         if "ingredientCount" not in df.columns and "n_ingredients" in df.columns:
             df["ingredientCount"] = df["n_ingredients"]
 
@@ -55,28 +230,28 @@ def load_recipes(data_dir: str = None) -> pd.DataFrame:
             df["stepsCount"] = df["n_steps"]
 
         if "totalTime" not in df.columns and "minutes" in df.columns:
-            df["totalTime"] = df["minutes"].clip(5, 300)  # Limiter entre 5 et 300 minutes
+            df["totalTime"] = df["minutes"].clip(5, 300)  # Limit between 5 and 300 minutes
 
-        # Estimer les calories à partir du nombre d'étapes
+        # Estimate calories from number of steps
         if "calories" not in df.columns:
             if "n_steps" in df.columns:
                 df["calories"] = (df["n_steps"] * 10 + 100).clip(50, 800)
             else:
-                df["calories"] = 300  # Valeur par défaut
+                df["calories"] = 300  # Default value
 
-        # Créer alias pour compatibilité
+        # Create alias for compatibility
         if "isVegetarian" not in df.columns:
             if "is_vegetarian" in df.columns:
                 df["isVegetarian"] = df["is_vegetarian"]
             else:
                 df["isVegetarian"] = False
 
-        # Créer le Nutri-Score grade si nutrition_score existe
+        # Create Nutri-Score grade if nutrition_score exists
         if "nutrition_grade" not in df.columns and "nutrition_score" in df.columns:
-            # Convertir le score en grade (A-E)
+            # Convert score to grade (A-E)
             def score_to_grade(score):
                 if pd.isna(score):
-                    return "C"  # Défaut
+                    return "C"  # Default
                 score = float(score)
                 if score <= 40:
                     return "A"
@@ -91,40 +266,33 @@ def load_recipes(data_dir: str = None) -> pd.DataFrame:
 
             df["nutrition_grade"] = df["nutrition_score"].apply(score_to_grade)
         elif "nutrition_grade" not in df.columns:
-            df["nutrition_grade"] = "C"  # Grade par défaut
+            df["nutrition_grade"] = "C"  # Default grade
 
-        # Ajouter le rating moyen des recettes à partir des interactions (OPTIMISÉ)
+        # Add average rating of recipes from interactions (OPTIMIZED)
         if "average_rating" not in df.columns:
             try:
-                # Charger les interactions pour calculer le rating moyen
-                interactions_path = Path(data_dir) / "RAW_interactions.csv"
+                # Load interactions to calculate average rating
+                interactions_path = data_dir_path / "RAW_interactions.csv"
                 if interactions_path.exists():
-                    # Lire seulement les colonnes nécessaires avec échantillonnage
-                    interactions = pd.read_csv(
-                        interactions_path,
-                        usecols=["recipe_id", "rating"],
-                        dtype={"recipe_id": "int64", "rating": "float32"},
-                    )
-                    # Calculer la moyenne par recette
+                    # Use centralized function
+                    interactions = read_raw_interactions(data_dir=data_dir, usecols=["recipe_id", "rating"])
+                    # Calculate average per recipe
                     avg_ratings = interactions.groupby("recipe_id", as_index=False)["rating"].mean()
                     avg_ratings.columns = ["id", "average_rating"]
-                    # Merger avec les recettes
+                    # Merge with recipes
                     df = df.merge(avg_ratings, on="id", how="left")
-                    # Remplir les valeurs manquantes avec 4.0
+                    # Fill missing values with 4.0
                     df["average_rating"] = df["average_rating"].fillna(4.0)
                 else:
                     df["average_rating"] = 4.0
             except Exception as e:
-                print(f"Erreur lors du chargement des ratings: {e}")
+                print(f"Error loading ratings: {e}")
                 df["average_rating"] = 4.0
 
     else:
-        # Fallback: charger depuis PP_recipes et RAW_recipes
-        recipes_path = Path(data_dir) / "PP_recipes.csv"
-        raw_recipes_path = Path(data_dir) / "RAW_recipes.csv"
-
-        df = pd.read_csv(recipes_path, nrows=10000)
-        raw_df = pd.read_csv(raw_recipes_path)
+        # Fallback: load from PP_recipes and RAW_recipes
+        df = read_pp_recipes(data_dir=data_dir, nrows=10000)
+        raw_df = read_raw_recipes(data_dir=data_dir)
         raw_df = raw_df[["id", "name", "ingredients", "steps"]]
         df = df.merge(raw_df, on="id", how="left")
 
@@ -157,18 +325,15 @@ def load_recipes(data_dir: str = None) -> pd.DataFrame:
 @st.cache_data
 def load_users(data_dir: str = None) -> pd.DataFrame:
     """
-    Charge les données utilisateurs depuis PP_users.csv.
+    Loads user data from PP_users.csv.
 
     Returns:
-        DataFrame avec les profils utilisateurs
+        DataFrame with user profiles
     """
-    if data_dir is None:
-        data_dir = Path.cwd() / "data"
+    # Use centralized function
+    df = read_pp_users(data_dir=data_dir)
 
-    users_path = Path(data_dir) / "PP_users.csv"
-    df = pd.read_csv(users_path)
-
-    # Convertir les colonnes de listes
+    # Convert list columns
     df["techniques"] = df["techniques"].apply(eval)
     df["items"] = df["items"].apply(eval)
     df["ratings"] = df["ratings"].apply(eval)
@@ -179,52 +344,49 @@ def load_users(data_dir: str = None) -> pd.DataFrame:
 @st.cache_data
 def load_interactions(data_dir: str = None, split: str = "train") -> pd.DataFrame:
     """
-    Charge les interactions utilisateur-recette.
+    Loads user-recipe interactions.
 
     Args:
-        data_dir: Répertoire contenant les données
-        split: 'train', 'validation' ou 'test'
+        data_dir: Directory containing the data
+        split: 'train', 'validation', or 'test'
 
     Returns:
-        DataFrame des interactions
+        DataFrame of interactions
     """
-    if data_dir is None:
-        data_dir = Path.cwd() / "data"
-
-    interactions_path = Path(data_dir) / f"interactions_{split}.csv"
-    df = pd.read_csv(interactions_path)
+    # Use centralized function
+    df = read_interactions_split(split=split, data_dir=data_dir)
     return df
 
 
 def get_recipe_name(recipe_id: int, recipes_df: pd.DataFrame) -> str:
     """
-    Récupère le nom lisible d'une recette à partir de ses tokens.
+    Retrieves the readable name of a recipe from its tokens.
 
     Args:
-        recipe_id: ID de la recette
-        recipes_df: DataFrame des recettes
+        recipe_id: Recipe ID
+        recipes_df: Recipes DataFrame
 
     Returns:
-        Nom de la recette (approximatif basé sur les tokens)
+        Recipe name (approximate based on tokens)
     """
     recipe = recipes_df[recipes_df["id"] == recipe_id]
     if recipe.empty:
-        return f"Recette #{recipe_id}"
+        return f"Recipe #{recipe_id}"
 
-    # Simplifier pour l'affichage
-    return f"Recette #{recipe_id}"
+    # Simplify for display
+    return f"Recipe #{recipe_id}"
 
 
 def get_recipe_details(recipe_id: int, recipes_df: pd.DataFrame) -> dict:
     """
-    Récupère tous les détails d'une recette.
+    Retrieves all details of a recipe.
 
     Args:
-        recipe_id: ID de la recette
-        recipes_df: DataFrame des recettes
+        recipe_id: Recipe ID
+        recipes_df: Recipes DataFrame
 
     Returns:
-        Dictionnaire avec les détails de la recette
+        Dictionary with recipe details
     """
     recipe = recipes_df[recipes_df["id"] == recipe_id].iloc[0]
 
@@ -250,50 +412,50 @@ def filter_recipes(
     nutrition_grades: list = None,
 ) -> pd.DataFrame:
     """
-    Filtre les recettes selon les critères spécifiés.
+    Filters recipes according to specified criteria.
 
     Args:
-        recipes_df: DataFrame des recettes
-        prep_range: Tuple (min, max) pour le temps de préparation
-        ingredients_range: Tuple (min, max) pour le nombre d'ingrédients
-        calories_range: Tuple (min, max) pour les calories
-        vegetarian_only: Filtrer uniquement les recettes végétariennes
-        nutrition_grades: Liste des grades nutritionnels acceptés (A, B, C, D, E)
+        recipes_df: Recipes DataFrame
+        prep_range: Tuple (min, max) for preparation time
+        ingredients_range: Tuple (min, max) for number of ingredients
+        calories_range: Tuple (min, max) for calories
+        vegetarian_only: Filter only vegetarian recipes
+        nutrition_grades: List of accepted nutritional grades (A, B, C, D, E)
 
     Returns:
-        DataFrame filtré
+        Filtered DataFrame
     """
     result = recipes_df.copy()
 
-    # Déterminer les colonnes de temps (essayer totalTime d'abord, puis minutes)
+    # Determine time columns (try totalTime first, then minutes)
     time_col = "totalTime" if "totalTime" in recipes_df.columns else "minutes"
 
-    # Déterminer les colonnes d'ingrédients
+    # Determine ingredient columns
     ing_col = "ingredientCount" if "ingredientCount" in recipes_df.columns else "n_ingredients"
 
-    # Déterminer les colonnes de calories
+    # Determine calorie columns
     cal_col = "calories" if "calories" in recipes_df.columns else None
 
-    # Filtrer par temps de préparation
+    # Filter by preparation time
     if time_col in result.columns:
         result = result[(result[time_col] >= prep_range[0]) & (result[time_col] <= prep_range[1])]
 
-    # Filtrer par nombre d'ingrédients
+    # Filter by number of ingredients
     if ing_col in result.columns:
         result = result[(result[ing_col] >= ingredients_range[0]) & (result[ing_col] <= ingredients_range[1])]
 
-    # Filtrer par calories (si la colonne existe)
+    # Filter by calories (if column exists)
     if cal_col and cal_col in result.columns:
         result = result[(result[cal_col] >= calories_range[0]) & (result[cal_col] <= calories_range[1])]
 
-    # Filtre végétarien
+    # Vegetarian filter
     if vegetarian_only:
         if "isVegetarian" in result.columns:
             result = result[result["isVegetarian"]]
         elif "is_vegetarian" in result.columns:
             result = result[result["is_vegetarian"]]
 
-    # Filtre grades nutritionnels
+    # Nutritional grades filter
     if nutrition_grades and len(nutrition_grades) > 0 and "nutrition_grade" in result.columns:
         result = result[result["nutrition_grade"].isin(nutrition_grades)]
 
@@ -302,13 +464,13 @@ def filter_recipes(
 
 def get_recipe_stats(recipes_df: pd.DataFrame) -> dict:
     """
-    Calcule les statistiques globales sur les recettes.
+    Calculates global statistics on recipes.
 
     Args:
-        recipes_df: DataFrame des recettes
+        recipes_df: Recipes DataFrame
 
     Returns:
-        Dictionnaire avec les statistiques
+        Dictionary with statistics
     """
     return {
         "total_recipes": len(recipes_df),

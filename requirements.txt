@@ -19,8 +19,8 @@ python-dotenv==1.0.0
 # Téléchargement de données (pour le prétraitement)
 kagglehub==0.3.13
 
-# Dépendances de développement (optionnel)
-# pytest==7.4.3
-# pytest-cov==4.1.0
+# Dépendances de développement
+pytest==7.4.3
+pytest-cov==4.1.0
 # ruff==0.1.8
 # sphinx==7.2.6
