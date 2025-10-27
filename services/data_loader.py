@@ -177,6 +177,33 @@ def read_csv_file(
         if file_content is None:
             raise FileNotFoundError(f"File not found in Google Drive: {filename}")
 
+        # When reading from BytesIO, pandas sometimes auto-converts string representations
+        # of lists to actual list objects. Use converters to force them to stay as strings.
+        # Common columns that contain list-like strings
+        list_columns = [
+            "tags",
+            "steps",
+            "ingredients",
+            "nutrition",
+            "techniques",
+            "ingredient_ids",
+            "name_tokens",
+            "ingredient_tokens",
+            "steps_tokens",
+            "items",
+            "ratings",
+        ]
+
+        # Only apply converters to columns that aren't already specified in dtype
+        if dtype:
+            converters = {col: str for col in list_columns if col not in dtype}
+        else:
+            converters = {col: str for col in list_columns}
+
+        # Add converters to read_params if not already specified
+        if "converters" not in read_params:
+            read_params["converters"] = converters
+
         df = pd.read_csv(io.BytesIO(file_content), **read_params)
         return df
 
