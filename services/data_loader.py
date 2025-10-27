@@ -160,7 +160,7 @@ def _get_data_dir(data_dir: Optional[str] = None) -> Path:
     return Path(data_dir)
 
 
-@st.cache_data
+@st.cache_data(hash_funcs={list: lambda x: str(x)})
 def read_csv_file(
     filename: str,
     data_dir: Optional[str] = None,
@@ -253,7 +253,7 @@ def read_csv_file(
     return df
 
 
-@st.cache_data
+@st.cache_data(hash_funcs={list: lambda x: str(x)})
 def read_preprocessed_recipes(data_dir: Optional[str] = None) -> pd.DataFrame:
     """
     Loads the preprocessed_recipes.csv file with optimized data types.
@@ -276,7 +276,7 @@ def read_preprocessed_recipes(data_dir: Optional[str] = None) -> pd.DataFrame:
     )
 
 
-@st.cache_data
+@st.cache_data(hash_funcs={list: lambda x: str(x)})
 def read_raw_recipes(
     data_dir: Optional[str] = None, usecols: Optional[List[str]] = None, nrows: Optional[int] = None
 ) -> pd.DataFrame:
@@ -294,7 +294,7 @@ def read_raw_recipes(
     return read_csv_file("RAW_recipes.csv", data_dir=data_dir, usecols=usecols, nrows=nrows)
 
 
-@st.cache_data
+@st.cache_data(hash_funcs={list: lambda x: str(x)})
 def read_pp_recipes(data_dir: Optional[str] = None, nrows: Optional[int] = None) -> pd.DataFrame:
     """
     Loads the PP_recipes.csv file.
@@ -309,7 +309,7 @@ def read_pp_recipes(data_dir: Optional[str] = None, nrows: Optional[int] = None)
     return read_csv_file("PP_recipes.csv", data_dir=data_dir, nrows=nrows)
 
 
-@st.cache_data
+@st.cache_data(hash_funcs={list: lambda x: str(x)})
 def read_pp_users(data_dir: Optional[str] = None) -> pd.DataFrame:
     """
     Loads the PP_users.csv file.
@@ -323,7 +323,7 @@ def read_pp_users(data_dir: Optional[str] = None) -> pd.DataFrame:
     return read_csv_file("PP_users.csv", data_dir=data_dir)
 
 
-@st.cache_data
+@st.cache_data(hash_funcs={list: lambda x: str(x)})
 def read_raw_interactions(data_dir: Optional[str] = None, usecols: Optional[List[str]] = None) -> pd.DataFrame:
     """
     Loads the RAW_interactions.csv file.
@@ -344,7 +344,7 @@ def read_raw_interactions(data_dir: Optional[str] = None, usecols: Optional[List
     return read_csv_file("RAW_interactions.csv", data_dir=data_dir, usecols=usecols, dtype=dtype_dict)
 
 
-@st.cache_data
+@st.cache_data(hash_funcs={list: lambda x: str(x)})
 def read_interactions_split(split: str = "train", data_dir: Optional[str] = None) -> pd.DataFrame:
     """
     Loads a split interactions file (train/validation/test).
@@ -368,7 +368,7 @@ def read_interactions_split(split: str = "train", data_dir: Optional[str] = None
 # ============================================================================
 
 
-@st.cache_data(show_spinner=False)  # Disable default spinner, we manage manually
+@st.cache_data(show_spinner=False, hash_funcs={list: lambda x: str(x)})  # Disable default spinner, we manage manually
 def load_recipes(data_dir: str = None) -> pd.DataFrame:
     """
     Loads and preprocesses recipe data from PP_recipes.csv and RAW_recipes.csv.
@@ -441,7 +441,7 @@ def load_recipes(data_dir: str = None) -> pd.DataFrame:
     return df
 
 
-@st.cache_data
+@st.cache_data(hash_funcs={list: lambda x: str(x)})
 def load_users(data_dir: str = None) -> pd.DataFrame:
     """
     Loads user data from PP_users.csv.
@@ -460,7 +460,7 @@ def load_users(data_dir: str = None) -> pd.DataFrame:
     return df
 
 
-@st.cache_data
+@st.cache_data(hash_funcs={list: lambda x: str(x)})
 def load_interactions(data_dir: str = None, split: str = "train") -> pd.DataFrame:
     """
     Loads user-recipe interactions.
