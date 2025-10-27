@@ -253,20 +253,6 @@ def read_csv_file(
 
 
 @st.cache_data(hash_funcs={list: lambda x: str(x)})
-def read_pp_users(data_dir: Optional[str] = None) -> pd.DataFrame:
-    """
-    Loads the PP_users.csv file.
-
-    Args:
-        data_dir: Directory containing the data
-
-    Returns:
-        pd.DataFrame: User profiles
-    """
-    return read_csv_file("PP_users.csv", data_dir=data_dir)
-
-
-@st.cache_data(hash_funcs={list: lambda x: str(x)})
 def read_raw_interactions(data_dir: Optional[str] = None, usecols: Optional[List[str]] = None) -> pd.DataFrame:
     """
     Loads the RAW_interactions.csv file.
@@ -353,25 +339,6 @@ def load_recipes(data_dir: str = None) -> pd.DataFrame:
     # Note: nutrition_score, nutrition_grade, nutrition array, and calories
     # are already computed in preprocessing - no need to calculate here
     # Average rating can be added as a separate function when needed
-
-    return df
-
-
-@st.cache_data(hash_funcs={list: lambda x: str(x)})
-def load_users(data_dir: str = None) -> pd.DataFrame:
-    """
-    Loads user data from PP_users.csv.
-
-    Returns:
-        DataFrame with user profiles
-    """
-    # Use centralized function
-    df = read_pp_users(data_dir=data_dir)
-
-    # Convert list columns
-    df["techniques"] = df["techniques"].apply(eval)
-    df["items"] = df["items"].apply(eval)
-    df["ratings"] = df["ratings"].apply(eval)
 
     return df
 

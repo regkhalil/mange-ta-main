@@ -21,10 +21,8 @@ os.environ["STREAMLIT_SERVER_ENABLE_STATIC_SERVING"] = "false"
 from services.data_loader import (
     load_interactions,
     load_recipes,
-    load_users,
     read_csv_file,
     read_interactions_split,
-    read_pp_users,
     read_raw_interactions,
 )
 
@@ -40,12 +38,6 @@ def data_dir():
 def recipes_df(data_dir):
     """Fixture providing loaded recipes DataFrame."""
     return load_recipes(data_dir=data_dir)
-
-
-@pytest.fixture
-def users_df(data_dir):
-    """Fixture providing loaded users DataFrame."""
-    return load_users(data_dir=data_dir)
 
 
 @pytest.fixture
@@ -80,16 +72,6 @@ class TestCentralizedCSVFunctions:
         """Test that FileNotFoundError is raised for non-existent files."""
         with pytest.raises(FileNotFoundError):
             read_csv_file("nonexistent_file.csv", data_dir=data_dir)
-
-    def test_read_pp_users(self, data_dir):
-        """Test loading user profiles."""
-        df = read_pp_users(data_dir=data_dir)
-        assert isinstance(df, pd.DataFrame)
-        assert len(df) > 0
-        # User column can be named 'u', 'user_id', or 'id'
-        assert any(
-            col in df.columns for col in ["u", "user_id", "id"]
-        ), f"No user ID column found. Available columns: {list(df.columns)}"
 
     def test_read_raw_interactions(self, data_dir):
         """Test loading raw interactions."""
@@ -141,11 +123,6 @@ class TestLoadingFunctions:
     def test_load_recipes_has_nutrition_grade(self, recipes_df):
         """Test that recipes have nutrition grade."""
         assert "nutrition_grade" in recipes_df.columns
-
-    def test_load_users(self, users_df):
-        """Test user data loading."""
-        assert isinstance(users_df, pd.DataFrame)
-        assert len(users_df) > 0
 
     def test_load_interactions(self, interactions_df):
         """Test interactions loading."""
