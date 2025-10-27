@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'preprocessing/**'
+      - '.github/workflows/preprocess-and-deploy.yml'
   workflow_dispatch:  # Allow manual triggering
 
 jobs:
