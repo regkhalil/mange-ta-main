@@ -50,8 +50,7 @@ clean:
 
 # Run tests (placeholder for future tests)
 test:
-	@echo "No tests configured yet"
-	# uv run pytest tests/
+	uv run pytest tests/
 
 # Start the app
 start:

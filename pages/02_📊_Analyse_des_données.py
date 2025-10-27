@@ -5,6 +5,8 @@ Cette page fournit des visualisations interactives et des statistiques
 sur les recettes et les interactions utilisateurs.
 """
 
+# Importer les fonctions centralisées de chargement de données
+import sys
 from pathlib import Path
 from typing import List, Optional, Tuple
 
@@ -14,6 +16,9 @@ import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from services.data_loader import read_preprocessed_recipes, read_raw_interactions
+
 # Configuration de la page
 st.set_page_config(page_title="Analyse des données", page_icon="📊", layout="wide")
 
@@ -22,30 +27,16 @@ st.set_page_config(page_title="Analyse des données", page_icon="📊", layout="
 def load_data() -> Tuple[Optional[pd.DataFrame], Optional[pd.DataFrame]]:
     """
     Charge les données des recettes et des interactions depuis les fichiers CSV.
+    Utilise les fonctions centralisées du module data_loader.
 
     Returns:
         Tuple[Optional[pd.DataFrame], Optional[pd.DataFrame]]:
         (recipes_df, interactions_df) ou (None, None) si erreur
     """
     try:
-        # Chemins vers les fichiers de données
-        data_dir = Path.cwd() / "data"
-        recipes_path = data_dir / "preprocessed_recipes.csv"
-        interactions_path = data_dir / "RAW_interactions.csv"
-
-        # Vérifier l'existence des fichiers
-        if not recipes_path.exists():
-            st.error(f"❌ Fichier introuvable: {recipes_path}")
-            st.info("💡 Placez le fichier PP_recipes.csv dans le dossier data/")
-            return None, None
-
-        if not interactions_path.exists():
-            st.error(f"❌ Fichier introuvable: {interactions_path}")
-            st.info("💡 Placez le fichier RAW_interactions.csv dans le dossier data/")
-            return None, None
-
-        # Charger les recettes
-        recipes_df = pd.read_csv(recipes_path)
+        # Utiliser les fonctions centralisées
+        recipes_df = read_preprocessed_recipes()
+        interactions_df = read_raw_interactions()
 
         # Nettoyer et convertir les colonnes numériques
         numeric_cols = [
@@ -76,15 +67,18 @@ def load_data() -> Tuple[Optional[pd.DataFrame], Optional[pd.DataFrame]]:
         # Supprimer les doublons
         recipes_df = recipes_df.drop_duplicates(subset=["id"])
 
-        # Charger les interactions
-        interactions_df = pd.read_csv(interactions_path)
-
-        # Nettoyer les interactions
+        # Nettoyer les interactions (déjà chargé par read_raw_interactions)
         interactions_df["rating"] = pd.to_numeric(interactions_df["rating"], errors="coerce")
         interactions_df = interactions_df.dropna(subset=["recipe_id", "user_id"])
 
         return recipes_df, interactions_df
 
+    except FileNotFoundError as e:
+        st.error(f"❌ Fichier introuvable: {e}")
+        st.info(
+            "💡 Assurez-vous que les fichiers preprocessed_recipes.csv et RAW_interactions.csv sont dans le dossier data/"
+        )
+        return None, None
     except Exception as e:
         st.error(f"❌ Erreur lors du chargement des données: {str(e)}")
         return None, None
