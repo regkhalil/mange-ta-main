@@ -319,10 +319,6 @@ def load_recipes(data_dir: str = None) -> pd.DataFrame:
         },
     )
 
-    # Create derived columns for UI (if they don't exist)
-    if "ingredientCount" not in df.columns and "n_ingredients" in df.columns:
-        df["ingredientCount"] = df["n_ingredients"]
-
     if "stepsCount" not in df.columns and "n_steps" in df.columns:
         df["stepsCount"] = df["n_steps"]
 
@@ -425,8 +421,8 @@ def filter_recipes(
     # Determine time columns (try totalTime first, then minutes)
     time_col = "totalTime" if "totalTime" in recipes_df.columns else "minutes"
 
-    # Determine ingredient columns
-    ing_col = "ingredientCount" if "ingredientCount" in recipes_df.columns else "n_ingredients"
+    # Determine ingredient columns - always use n_ingredients now
+    ing_col = "n_ingredients"
 
     # Determine calorie columns
     cal_col = "calories" if "calories" in recipes_df.columns else None
@@ -468,7 +464,7 @@ def get_recipe_stats(recipes_df: pd.DataFrame) -> dict:
         "total_recipes": len(recipes_df),
         "avg_prep_time": recipes_df["totalTime"].mean(),
         "median_prep_time": recipes_df["totalTime"].median(),
-        "avg_ingredients": recipes_df["ingredientCount"].mean(),
+        "avg_ingredients": recipes_df["n_ingredients"].mean(),
         "avg_calories": recipes_df["calories"].mean(),
         "vegetarian_count": recipes_df["is_vegetarian"].sum(),
         "vegetarian_percentage": (recipes_df["is_vegetarian"].sum() / len(recipes_df)) * 100,

@@ -58,7 +58,7 @@ def render_recipe_card(recipe: pd.Series, show_similarity: bool = False, similar
         with col1:
             st.metric("⏱️ Temps", f"{int(recipe['totalTime'])} min")
         with col2:
-            st.metric("🥕 Ingrédients", int(recipe["ingredientCount"]))
+            st.metric("🥕 Ingrédients", int(recipe.get("n_ingredients", 0)))
         with col3:
             st.metric("🔥 Calories", f"{int(recipe['calories'])} kcal")
 

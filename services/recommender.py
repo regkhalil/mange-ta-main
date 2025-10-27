@@ -112,8 +112,8 @@ class RecipeRecommender:
         filtered = filtered[
             (filtered["totalTime"] >= prep_range[0])
             & (filtered["totalTime"] <= prep_range[1])
-            & (filtered["ingredientCount"] >= ingredients_range[0])
-            & (filtered["ingredientCount"] <= ingredients_range[1])
+            & (filtered["n_ingredients"] >= ingredients_range[0])
+            & (filtered["n_ingredients"] <= ingredients_range[1])
             & (filtered["calories"] >= calories_range[0])
             & (filtered["calories"] <= calories_range[1])
         ]
@@ -159,7 +159,7 @@ def format_recommendations_for_display(recommendations: List[Tuple[pd.Series, fl
             {
                 "id": recipe["id"],
                 "name": f"Recette #{recipe['id']}",
-                "ingredients": recipe["ingredientCount"],
+                "ingredients": int(recipe.get("n_ingredients", 0)),
                 "time": recipe["totalTime"],
                 "calories": recipe["calories"],
                 "vegetarian": recipe["is_vegetarian"],

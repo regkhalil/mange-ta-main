@@ -88,7 +88,7 @@ def render_recipe_card_enhanced(recipe: pd.Series, show_similar_button: bool = T
                 f"""
             <div style='text-align: center; padding: 0.5rem; background: #f0f2f6; border-radius: 6px;'>
                 <div style='font-size: 1.2rem;'>🥕</div>
-                <div style='font-size: 0.85rem; font-weight: bold;'>{int(recipe["ingredientCount"])}</div>
+                <div style='font-size: 0.85rem; font-weight: bold;'>{int(recipe.get("n_ingredients", 0))}</div>
             </div>
             """,
                 unsafe_allow_html=True,
@@ -167,7 +167,7 @@ def render_recipe_detail(recipe: pd.Series, recommender=None):
             with col1:
                 st.metric("⏱️ Temps", f"{int(recipe['totalTime'])} min")
             with col2:
-                st.metric("🥕 Ingrédients", int(recipe["ingredientCount"]))
+                st.metric("🥕 Ingrédients", int(recipe.get("n_ingredients", 0)))
             with col3:
                 st.metric("🔥 Calories", f"{int(recipe['calories'])} kcal")
 
@@ -217,7 +217,7 @@ def render_recipe_detail(recipe: pd.Series, recommender=None):
                         st.rerun()
 
                     st.caption(f"Similarité: {score:.1%}")
-                    st.markdown(f"⏱️ {int(rec['totalTime'])}min | 🥕 {int(rec['ingredientCount'])}")
+                    st.markdown(f"⏱️ {int(rec['totalTime'])}min | 🥕 {int(rec.get('n_ingredients', 0))}")
 
 
 def render_search_bar():

@@ -43,7 +43,7 @@ def search_recipes(
     # Créer le masque de filtrage
     mask = (
         (recipes_df["totalTime"] <= prep_time_max)
-        & (recipes_df["ingredientCount"] <= ingredients_max)
+        & (recipes_df["n_ingredients"] <= ingredients_max)
         & (recipes_df["calories"] <= calories_max)
     )
 
