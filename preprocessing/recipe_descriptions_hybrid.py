@@ -260,11 +260,14 @@ def create_enhanced_description(
     metadata: dict,
     ingredients_list: Optional[list] = None,
     raw_tags: Optional[list] = None,
+    recipe_name: Optional[str] = None,
     include_time_when_short: bool = True
 ) -> str:
     """
     Create enhanced description as a single natural sentence.
     Format: "[Technique] [meal type] with [ingredients], ready in [time] — [original description]."
+    
+    If no metadata/description available, falls back to recipe name.
     
     The metadata, ingredients, and duration come first, then the user's description is appended.
     """
@@ -358,49 +361,29 @@ def create_enhanced_description(
         template = ', '.join(template_parts)
         
         if has_desc:
-            # Ensure original description starts with lowercase (will be mid-sentence)
+            # Keep original description capitalization (it will be after a dash)
             clean_desc = original_desc.rstrip('.')
-            if clean_desc and clean_desc[0].isupper():
-                clean_desc = clean_desc[0].lower() + clean_desc[1:]
+            # Ensure first letter is capitalized (after the dash — )
+            if clean_desc and clean_desc[0].islower():
+                clean_desc = clean_desc[0].upper() + clean_desc[1:]
             
-            # Template first, then user description
+            # Template first, then user description after dash
             return f"{template} — {clean_desc}."
         else:
             # No user description, just the template
             return f"{template}."
     
     else:
-        # No template parts - ensure description is properly capitalized
+        # No template parts - fall back to description or recipe name
         if has_desc:
             clean_desc = original_desc.rstrip('.')
             # Capitalize first letter
             if clean_desc:
                 clean_desc = clean_desc[0].upper() + clean_desc[1:] if len(clean_desc) > 1 else clean_desc.upper()
             return f"{clean_desc}."
-        else:
-            return ""
-    if template_parts:
-        template = ', '.join(template_parts)
-        
-        if has_desc:
-            # Ensure original description starts with lowercase (will be mid-sentence)
-            clean_desc = original_desc.rstrip('.')
-            if clean_desc and clean_desc[0].isupper():
-                clean_desc = clean_desc[0].lower() + clean_desc[1:]
-            
-            # Template first, then user description
-            return f"{template} — {clean_desc}."
-        else:
-            # No user description, just the template
-            return f"{template}."
-    
-    else:
-        # No metadata or time, just return user description with proper capitalization
-        if has_desc:
-            clean_desc = original_desc.rstrip('.')
-            if clean_desc and clean_desc[0].islower():
-                clean_desc = clean_desc[0].upper() + clean_desc[1:]
-            return f"{clean_desc}."
+        elif recipe_name:
+            # Last resort: use recipe name
+            return f"{recipe_name}."
         else:
             return ""
 
@@ -438,6 +421,9 @@ def enhance_recipe_descriptions(
         # Get original description
         orig_desc = row[original_desc_col] if pd.notna(row[original_desc_col]) else ""
         
+        # Get recipe name for fallback
+        recipe_name = row['name'] if 'name' in row and pd.notna(row['name']) else None
+        
         # Get time (only if reasonable)
         minutes = None
         if pd.notna(row[time_col]) and 0 < row[time_col] < 10000:  # Cap at very high but realistic times
@@ -459,8 +445,8 @@ def enhance_recipe_descriptions(
         if ingredients_col in row and pd.notna(row[ingredients_col]):
             ingredients = extract_main_ingredients(row[ingredients_col], max_ingredients=2)
         
-        # Create enhanced description
-        return create_enhanced_description(orig_desc, minutes, metadata, ingredients, raw_tags)
+        # Create enhanced description with recipe name fallback
+        return create_enhanced_description(orig_desc, minutes, metadata, ingredients, raw_tags, recipe_name)
     
     df[output_col] = df.apply(enhance_row, axis=1)
     

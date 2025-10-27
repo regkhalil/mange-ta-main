@@ -5,6 +5,7 @@ This module provides comprehensive text cleaning functionality that can handle:
 - Single text strings (descriptions)
 - List columns stored as strings (tags, steps, ingredients)
 - Proper capitalization, contractions, and punctuation
+- Automatic proper noun detection using NLTK
 """
 
 import ast
@@ -16,6 +17,23 @@ import pandas as pd
 
 # Set up logger for this module
 logger = logging.getLogger(__name__)
+
+# Try to import NLTK for proper noun detection
+try:
+    import nltk
+    from nltk import pos_tag, word_tokenize
+    NLTK_AVAILABLE = True
+    # Ensure required data is downloaded
+    try:
+        nltk.data.find('taggers/averaged_perceptron_tagger_eng')
+        nltk.data.find('tokenizers/punkt_tab')
+    except LookupError:
+        logger.info("Downloading NLTK data...")
+        nltk.download('averaged_perceptron_tagger_eng', quiet=True)
+        nltk.download('punkt_tab', quiet=True)
+except ImportError:
+    NLTK_AVAILABLE = False
+    logger.warning("NLTK not available. Using fallback proper noun list.")
 
 
 def clean_text(text: str, apply_title_case: bool = False, is_sentence: bool = False) -> str:
@@ -73,10 +91,21 @@ def clean_text(text: str, apply_title_case: bool = False, is_sentence: bool = Fa
         r"\bwe\s+ve\b": "we've",
         r"\bthey\s+ve\b": "they've",
         r"\byou\s+ve\b": "you've",
+        # Southern/informal
+        r"\by\s+all\b": "y'all",
+        # Time
+        r"\bo\s+clock\b": "o'clock",
+        # Common informal phrases
+        r"\bn\s+(\w+)\b": "n' \\1",  # rock n roll -> rock n' roll
+        # S'mores special case
+        r"\bs\s+mores\b": "s'mores",
     }
     
     for pattern, replacement in contraction_patterns.items():
         text = re.sub(pattern, replacement, text, flags=re.IGNORECASE)
+    
+    # Capitalize standalone "i" (the pronoun)
+    text = re.sub(r'\bi\b', 'I', text)
     
     # Restore possessives (mom s -> mom's, grandma s -> grandma's)
     # More specific pattern to avoid false positives
@@ -91,9 +120,10 @@ def clean_text(text: str, apply_title_case: bool = False, is_sentence: bool = Fa
     
     # Apply capitalization
     if apply_title_case:
+        # For names/ingredients - capitalize everything (don't use NLTK)
         text = _apply_smart_title_case(text)
     elif is_sentence:
-        # Capitalize first letter and proper nouns
+        # For descriptions/steps - capitalize first letter and proper nouns only
         if text:
             # Capitalize first letter after sentence start (. ! ? or em dash —)
             text = re.sub(r'(^|[.!?]\s+|—\s*)([a-z])', lambda m: m.group(1) + m.group(2).upper(), text)
@@ -101,15 +131,62 @@ def clean_text(text: str, apply_title_case: bool = False, is_sentence: bool = Fa
             if text[0].islower():
                 text = text[0].upper() + text[1:]
             
-            # Capitalize proper nouns (names, nationalities, countries)
-            text = _capitalize_proper_nouns(text)
+            # Use NLTK for automatic proper noun detection if available (ONLY for sentences)
+            if NLTK_AVAILABLE:
+                text = _capitalize_proper_nouns_nltk(text)
+            else:
+                # Fallback to hardcoded list
+                text = _capitalize_proper_nouns(text)
     
     return text
+
+
+def _capitalize_proper_nouns_nltk(text: str) -> str:
+    """
+    Use NLTK to automatically detect and capitalize proper nouns.
+    
+    Args:
+        text: Text to process
+        
+    Returns:
+        Text with proper nouns capitalized based on POS tagging
+    """
+    try:
+        # First apply our fallback list (catches family names, nationalities, etc.)
+        text = _capitalize_proper_nouns(text)
+        
+        # Then use NLTK for additional proper nouns it can detect
+        tokens = word_tokenize(text)
+        tagged = pos_tag(tokens)
+        
+        # Capitalize proper nouns (NNP = singular proper noun, NNPS = plural proper noun)
+        result = []
+        for word, tag in tagged:
+            if tag in ('NNP', 'NNPS') and word.islower():
+                # Capitalize proper nouns
+                result.append(word.capitalize())
+            else:
+                result.append(word)
+        
+        # Rejoin tokens (handle spacing around punctuation)
+        text_result = ' '.join(result)
+        # Fix spacing before punctuation and apostrophes
+        text_result = re.sub(r'\s+([.,!?;:\'])', r'\1', text_result)
+        # Fix spacing after opening quotes/parens
+        text_result = re.sub(r'([\(\[\"])\s+', r'\1', text_result)
+        
+        return text_result
+    except Exception as e:
+        logger.warning(f"NLTK proper noun detection failed: {e}. Using fallback.")
+        return _capitalize_proper_nouns(text)
 
 
 def _capitalize_proper_nouns(text: str) -> str:
     """
     Capitalize proper nouns like names, nationalities, and countries in sentence text.
+    Fallback method using hardcoded list (used when NLTK unavailable or as supplement).
+    
+```
     
     Args:
         text: Text to process
@@ -117,33 +194,56 @@ def _capitalize_proper_nouns(text: str) -> str:
     Returns:
         Text with proper nouns capitalized
     """
-    # Common proper nouns to capitalize
+    # Common proper nouns to capitalize (extracted from recipe data + common terms)
     proper_nouns = {
         # Family/People
         'mom', 'dad', 'grandma', 'grandpa', 'nana', 'papa', 'aunt', 'uncle',
-        'mother', 'father', 'grandmother', 'grandfather',
+        'mother', 'father', 'grandmother', 'grandfather', 'nonna', 'bubbie', 'memere',
         
-        # Nationalities/Regions
-        'italian', 'french', 'mexican', 'chinese', 'japanese', 'indian', 'thai',
-        'american', 'canadian', 'british', 'english', 'spanish', 'greek', 'german',
-        'korean', 'vietnamese', 'moroccan', 'lebanese', 'turkish', 'polish',
-        'russian', 'brazilian', 'peruvian', 'argentinian', 'cuban', 'caribbean',
-        'mediterranean', 'asian', 'european', 'latin', 'southern', 'northern',
-        'eastern', 'western', 'midwestern', 'southwestern', 'cajun', 'creole',
+        # Nationalities/Cuisines (data-driven from tags)
+        'african', 'american', 'amish', 'angolan', 'arabian', 'argentine', 'argentinian',
+        'ashkenazi', 'asian', 'australian', 'austrian', 'baja', 'belgian', 'brazilian',
+        'british', 'cajun', 'californian', 'cambodian', 'canadian', 'cantonese',
+        'caribbean', 'central', 'chilean', 'chinese', 'colombian', 'costa', 'creole',
+        'croatian', 'cuban', 'czech', 'danish', 'dominican', 'dutch', 'eastern',
+        'ecuadorian', 'egyptian', 'english', 'ethiopian', 'european', 'filipino',
+        'finnish', 'french', 'german', 'greek', 'guatemalan', 'hawaiian', 'honduran',
+        'hungarian', 'icelandic', 'indian', 'indonesian', 'iranian', 'iraqi', 'irish',
+        'israeli', 'italian', 'jamaican', 'japanese', 'jewish', 'jordanian', 'kenyan',
+        'korean', 'latin', 'latvian', 'lebanese', 'malaysian', 'mediterranean', 'mexican',
+        'middle', 'moroccan', 'nepalese', 'nigerian', 'northern', 'norwegian', 'pacific',
+        'pakistani', 'palestinian', 'peruvian', 'polish', 'polynesian', 'portuguese',
+        'puerto', 'rican', 'romanian', 'russian', 'salvadoran', 'scandinavian', 'scottish',
+        'sicilian', 'singaporean', 'slavic', 'slovak', 'slovenian', 'soul', 'south',
+        'southern', 'southwestern', 'spanish', 'sri', 'lankan', 'sudanese', 'swedish',
+        'swiss', 'syrian', 'taiwanese', 'tex', 'mex', 'thai', 'tibetan', 'trinidadian',
+        'tunisian', 'turkish', 'ukrainian', 'uruguayan', 'venezuelan', 'vietnamese',
+        'welsh', 'western', 'yemeni', 'yugoslavian',
         
         # Countries/Places
-        'italy', 'france', 'mexico', 'china', 'japan', 'india', 'thailand',
-        'america', 'canada', 'england', 'spain', 'greece', 'germany', 'korea',
-        'vietnam', 'morocco', 'lebanon', 'turkey', 'poland', 'russia', 'brazil',
-        'peru', 'argentina', 'cuba', 'texas', 'california', 'new york', 'chicago',
+        'africa', 'america', 'argentina', 'asia', 'australia', 'austria', 'belgium',
+        'brazil', 'britain', 'california', 'canada', 'caribbean', 'chile', 'china',
+        'colombia', 'cuba', 'denmark', 'egypt', 'england', 'europe', 'france', 'germany',
+        'greece', 'hawaii', 'india', 'iran', 'iraq', 'ireland', 'israel', 'italy',
+        'jamaica', 'japan', 'jordan', 'kenya', 'korea', 'lebanon', 'malaysia', 'mexico',
+        'morocco', 'nepal', 'nigeria', 'norway', 'pakistan', 'peru', 'philippines',
+        'poland', 'portugal', 'puerto rico', 'russia', 'scotland', 'singapore', 'spain',
+        'sweden', 'switzerland', 'syria', 'taiwan', 'texas', 'thailand', 'turkey',
+        'ukraine', 'vietnam', 'wales', 'york', 'chicago', 'boston', 'miami', 'seattle',
         
-        # Holidays
-        'christmas', 'thanksgiving', 'easter', 'halloween', 'valentine',
+        # Holidays/Special Days
+        'christmas', 'thanksgiving', 'easter', 'halloween', 'valentine', 'valentines',
+        'hanukkah', 'passover', 'kwanzaa', 'ramadan', 'diwali', 'cinco', 'mayo',
+        'patrick', 'patrick\'s', 'new year', 'new years', 'memorial', 'labor',
+        'independence', 'fourth', 'july', 'mardi', 'gras', 'carnival',
         
         # Days/Months
         'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday',
         'january', 'february', 'march', 'april', 'may', 'june', 'july',
-        'august', 'september', 'october', 'november', 'december'
+        'august', 'september', 'october', 'november', 'december',
+        
+        # Other Proper Terms
+        'beijing', 'beijing', 'kosher', 'rican'
     }
     
     words = text.split()
