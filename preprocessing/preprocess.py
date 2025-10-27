@@ -18,8 +18,8 @@ import nutrition_scoring
 import prepare_similarity_matrix
 import prepare_vege_recipes
 import preprocess_utils
-from text_cleaner import clean_recipe_data
 from recipe_descriptions_hybrid import enhance_recipe_descriptions
+from text_cleaner import clean_recipe_data
 
 logger = logging.getLogger(__name__)
 
@@ -103,25 +103,20 @@ def main() -> None:
     logger.info("Enhancing recipe descriptions with metadata and ingredients...")
     df_enhanced = enhance_recipe_descriptions(
         df_with_nutriscore,
-        original_desc_col='description',
-        time_col='minutes',
-        tags_col='tags',
-        ingredients_col='ingredients',
-        output_col='description_enhanced'
+        original_desc_col="description",
+        time_col="minutes",
+        tags_col="tags",
+        ingredients_col="ingredients",
+        output_col="description_enhanced",
     )
-    
+
     # Replace original description with enhanced version and drop the temp column
-    df_enhanced['description'] = df_enhanced['description_enhanced']
-    df_enhanced = df_enhanced.drop(columns=['description_enhanced'])
-    
+    df_enhanced["description"] = df_enhanced["description_enhanced"]
+    df_enhanced = df_enhanced.drop(columns=["description_enhanced"])
+
     logger.info("Cleaning all text columns with proper capitalization...")
     df_cleaned = clean_recipe_data(
-        df_enhanced,
-        clean_name=True,
-        clean_description=True,
-        clean_steps=True,
-        clean_tags=True,
-        clean_ingredients=True
+        df_enhanced, clean_name=True, clean_description=True, clean_steps=True, clean_tags=True, clean_ingredients=True
     )
 
     # Remove unneeded columns and store the final dataframe in a csv
@@ -145,7 +140,7 @@ def main() -> None:
             "is_vegetarian",
         ]
     ].copy()
-    
+
     # Rename cleaned columns back to standard names for the app
     df_preprocessed.columns = [
         "name",
@@ -162,7 +157,7 @@ def main() -> None:
         "nutrition_grade",
         "is_vegetarian",
     ]
-    
+
     logger.info(f"Final DataFrame shape: {df_preprocessed.shape}")
     logger.info(f"Final columns: {df_preprocessed.columns.tolist()}")
     output_csv_path = os.path.join(local_data_dir, "preprocessed_recipes.csv")

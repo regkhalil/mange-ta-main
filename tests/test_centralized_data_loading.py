@@ -114,9 +114,9 @@ class TestCentralizedCSVFunctions:
         assert isinstance(df, pd.DataFrame)
         assert len(df) > 0
         # User column can be named 'u', 'user_id', or 'id'
-        assert any(
-            col in df.columns for col in ["u", "user_id", "id"]
-        ), f"No user ID column found. Available columns: {list(df.columns)}"
+        assert any(col in df.columns for col in ["u", "user_id", "id"]), (
+            f"No user ID column found. Available columns: {list(df.columns)}"
+        )
 
     def test_read_raw_interactions(self, data_dir):
         """Test loading raw interactions."""

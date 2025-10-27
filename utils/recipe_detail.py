@@ -174,7 +174,7 @@ def render_recipe_detail(recipes_df: pd.DataFrame, recommender, recipe_id: int, 
     title_html = (
         f"<div style='margin-bottom: 0.5rem;'>"
         f"<h1 style='font-size: 2.8rem; color: #1a1a1a; margin-bottom: 0.5rem; font-weight: 400; "
-        f"line-height: 1.2; font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif;'>"
+        f'line-height: 1.2; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;\'>'
         f"{recipe_name_clean}"
         f"</h1>"
         f"</div>"
@@ -183,7 +183,7 @@ def render_recipe_detail(recipes_df: pd.DataFrame, recommender, recipe_id: int, 
 
     # Badges avec informations clés
     prep_time = int(target_recipe.get("totalTime", target_recipe.get("minutes", 30)))
-    
+
     # Extract calories from nutrition array
     calories = 0
     nutrition_data = target_recipe.get("nutrition")
@@ -196,7 +196,7 @@ def render_recipe_detail(recipes_df: pd.DataFrame, recommender, recipe_id: int, 
             calories = int(nutrition_array[0]) if nutrition_array else 0
         except (ValueError, IndexError, SyntaxError):
             calories = 0
-    
+
     is_veg = target_recipe.get("isVegetarian", target_recipe.get("is_vegetarian", False))
     nutri_grade = target_recipe.get("nutrition_grade", "C")
     nutri_score = float(target_recipe.get("nutrition_score", 50))
@@ -247,14 +247,14 @@ def render_recipe_detail(recipes_df: pd.DataFrame, recommender, recipe_id: int, 
             f"<div style='border-left: 4px solid #667eea; padding: 1.5rem 1.5rem 1.5rem 2rem; "
             f"margin-bottom: 2rem; background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);'>"
             f"<p style='font-size: 1rem; line-height: 1.7; color: #1a1a1a; margin: 0; "
-            f"font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif;'>{description_clean}</p>"
+            f'font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;\'>{description_clean}</p>'
             f"</div>"
         )
         st.markdown(description_html, unsafe_allow_html=True)
 
     # Section Ingrédients - Compact inline display
     st.markdown("### Ingrédients")
-    
+
     ingredients_text = target_recipe.get("ingredients", "")
     if isinstance(ingredients_text, str) and ingredients_text:
         try:
@@ -300,111 +300,96 @@ def render_recipe_detail(recipes_df: pd.DataFrame, recommender, recipe_id: int, 
     # Nutrition Statistics and Visualizations
     st.markdown("<div id='nutrition-analysis'></div>", unsafe_allow_html=True)
     st.markdown("### 📊 Analyse Nutritionnelle")
-    
+
     # Load nutrition data from the recipe (already in preprocessed_recipes.csv)
     try:
         nutrition_data = target_recipe.get("nutrition")
-        
+
         if nutrition_data:
             # If it's a string, parse it; if it's already a list, use it directly
             if isinstance(nutrition_data, str):
                 nutrition_array = ast.literal_eval(nutrition_data)
             else:
                 nutrition_array = nutrition_data
-                
+
             calories_nutr, total_fat, sugar, sodium, protein, saturated_fat, carbohydrates = nutrition_array
-            
-            # Dataset means (pre-calculated)
-            dataset_means = {
-                "Calories (kcal)": 473.94,
-                "Lipides totaux (% AJR)": 36.08,
-                "Sucre (% AJR)": 84.30,
-                "Sodium (% AJR)": 30.15,
-                "Protéines (% AJR)": 34.68,
-                "Lipides saturés (% AJR)": 45.59,
-                "Glucides (% AJR)": 15.56
-            }
-            
-            recipe_values = {
-                "Calories (kcal)": calories_nutr,
-                "Lipides totaux (% AJR)": total_fat,
-                "Sucre (% AJR)": sugar,
-                "Sodium (% AJR)": sodium,
-                "Protéines (% AJR)": protein,
-                "Lipides saturés (% AJR)": saturated_fat,
-                "Glucides (% AJR)": carbohydrates
-            }
-            
+
             # Create two columns for gauge and table
             col1, col2 = st.columns([1, 1])
-            
+
             with col1:
                 # Nutri-Score Gauge with median reference and quartile markers
                 nutri_colors = {"A": "#28a745", "B": "#82c91e", "C": "#ffc107", "D": "#fd7e14", "E": "#dc3545"}
                 gauge_color = nutri_colors.get(nutri_grade, "#6c757d")
-                
+
                 # Add title above the gauge
                 st.markdown(
                     f"<h3 style='text-align: center; font-size: 1.5rem; color: #1a1a1a; margin-bottom: -5px; margin-top: 0;'>Nutri-Score: {nutri_grade}</h3>",
-                    unsafe_allow_html=True
+                    unsafe_allow_html=True,
                 )
-                
+
                 # Calculate dataset statistics for reference
                 all_scores = pd.read_csv("data/preprocessed_recipes.csv", usecols=["nutrition_score"])
                 median_score = all_scores["nutrition_score"].median()
                 q1_score = all_scores["nutrition_score"].quantile(0.25)
                 q3_score = all_scores["nutrition_score"].quantile(0.75)
-                
-                fig_gauge = go.Figure(go.Indicator(
-                    mode="gauge+number+delta",
-                    value=nutri_score,
-                    domain={'x': [0, 1], 'y': [0, 1]},
-                    delta={
-                        'reference': median_score, 
-                        'increasing': {'color': "#28a745"},  # Higher = better (green)
-                        'decreasing': {'color': "#dc3545"},  # Lower = worse (red)
-                        'suffix': ' vs médiane',
-                        'position': 'bottom',
-                        'font': {'size': 14}
-                    },
-                    number={'suffix': '/100', 'font': {'size': 36}, 'valueformat': '.1f'},
-                    gauge={
-                        'axis': {
-                            'range': [0, 100], 
-                            'tickwidth': 2, 
-                            'tickcolor': "darkgray",
-                            'tickmode': 'array',
-                            'tickvals': [q1_score, median_score, q3_score],
-                            'ticktext': [f'Q1: {q1_score:.0f}', f'Médiane: {median_score:.0f}', f'Q3: {q3_score:.0f}']
+
+                fig_gauge = go.Figure(
+                    go.Indicator(
+                        mode="gauge+number+delta",
+                        value=nutri_score,
+                        domain={"x": [0, 1], "y": [0, 1]},
+                        delta={
+                            "reference": median_score,
+                            "increasing": {"color": "#28a745"},  # Higher = better (green)
+                            "decreasing": {"color": "#dc3545"},  # Lower = worse (red)
+                            "suffix": " vs médiane",
+                            "position": "bottom",
+                            "font": {"size": 14},
                         },
-                        'bar': {'color': gauge_color, 'thickness': 0.75},
-                        'bgcolor': "white",
-                        'borderwidth': 2,
-                        'bordercolor': "gray",
-                        'steps': [
-                            {'range': [0, 20], 'color': 'rgba(220, 53, 69, 0.3)'},      # E - worst (red)
-                            {'range': [20, 40], 'color': 'rgba(253, 126, 20, 0.3)'},   # D - poor (orange)
-                            {'range': [40, 60], 'color': 'rgba(255, 193, 7, 0.3)'},    # C - average (yellow)
-                            {'range': [60, 80], 'color': 'rgba(130, 201, 30, 0.3)'},   # B - good (lime)
-                            {'range': [80, 100], 'color': 'rgba(40, 167, 69, 0.3)'}    # A - best (green)
-                        ],
-                        'threshold': {
-                            'line': {'color': "black", 'width': 4},
-                            'thickness': 0.75,
-                            'value': nutri_score
-                        }
-                    }
-                ))
-                
+                        number={"suffix": "/100", "font": {"size": 36}, "valueformat": ".1f"},
+                        gauge={
+                            "axis": {
+                                "range": [0, 100],
+                                "tickwidth": 2,
+                                "tickcolor": "darkgray",
+                                "tickmode": "array",
+                                "tickvals": [q1_score, median_score, q3_score],
+                                "ticktext": [
+                                    f"Q1: {q1_score:.0f}",
+                                    f"Médiane: {median_score:.0f}",
+                                    f"Q3: {q3_score:.0f}",
+                                ],
+                            },
+                            "bar": {"color": gauge_color, "thickness": 0.75},
+                            "bgcolor": "white",
+                            "borderwidth": 2,
+                            "bordercolor": "gray",
+                            "steps": [
+                                {"range": [0, 20], "color": "rgba(220, 53, 69, 0.3)"},  # E - worst (red)
+                                {"range": [20, 40], "color": "rgba(253, 126, 20, 0.3)"},  # D - poor (orange)
+                                {"range": [40, 60], "color": "rgba(255, 193, 7, 0.3)"},  # C - average (yellow)
+                                {"range": [60, 80], "color": "rgba(130, 201, 30, 0.3)"},  # B - good (lime)
+                                {"range": [80, 100], "color": "rgba(40, 167, 69, 0.3)"},  # A - best (green)
+                            ],
+                            "threshold": {
+                                "line": {"color": "black", "width": 4},
+                                "thickness": 0.75,
+                                "value": nutri_score,
+                            },
+                        },
+                    )
+                )
+
                 fig_gauge.update_layout(
                     height=280,
                     margin=dict(l=20, r=20, t=30, b=50),
                     paper_bgcolor="rgba(0,0,0,0)",
-                    font={'color': "#1a1a1a", 'family': "Arial", 'size': 11}
+                    font={"color": "#1a1a1a", "family": "Arial", "size": 11},
                 )
-                
-                st.plotly_chart(fig_gauge, use_container_width=True, config={'displayModeBar': False})
-                
+
+                st.plotly_chart(fig_gauge, use_container_width=True, config={"displayModeBar": False})
+
                 # Calculate percentile
                 percentile = (all_scores["nutrition_score"] < nutri_score).sum() / len(all_scores) * 100
                 st.markdown(
@@ -412,9 +397,9 @@ def render_recipe_detail(recipes_df: pd.DataFrame, recommender, recipe_id: int, 
                     f"<p style='font-size: 0.85rem; color: #666; margin-bottom: 2px;'>Cette recette est meilleure que <b>{percentile:.1f}%</b> des recettes du dataset</p>"
                     f"<p style='font-size: 0.75rem; color: #999; margin-top: 0;'>Score plus élevé = meilleure qualité nutritionnelle</p>"
                     f"</div>",
-                    unsafe_allow_html=True
+                    unsafe_allow_html=True,
                 )
-            
+
             with col2:
                 # Nutrition Table with Score
                 st.markdown(
@@ -432,94 +417,87 @@ def render_recipe_detail(recipes_df: pd.DataFrame, recommender, recipe_id: int, 
                     f"</table>"
                     f"<p style='font-size: 0.75rem; color: #666; margin-top: 0.5rem; margin-bottom: 0;'>AJR = Apport Journalier Recommandé</p>"
                     f"</div>",
-                    unsafe_allow_html=True
+                    unsafe_allow_html=True,
                 )
-            
+
             # Bar chart comparing with dataset means - Limited to key nutrients
             st.markdown("#### Comparaison avec la Moyenne du Dataset")
-            
+
             # Limit to key nutrients only
             key_nutrients = {
                 "Calories": calories_nutr,
                 "Protéines": protein,
                 "Lipides": total_fat,
                 "Sucre": sugar,
-                "Sodium": sodium
+                "Sodium": sodium,
             }
-            
-            key_means = {
-                "Calories": 473.94,
-                "Protéines": 34.68,
-                "Lipides": 36.08,
-                "Sucre": 84.30,
-                "Sodium": 30.15
-            }
-            
+
+            key_means = {"Calories": 473.94, "Protéines": 34.68, "Lipides": 36.08, "Sucre": 84.30, "Sodium": 30.15}
+
             nutrients = list(key_nutrients.keys())
             recipe_vals = list(key_nutrients.values())
             dataset_vals = list(key_means.values())
-            
+
             # Calculate max value for proper scaling
             max_val = max(max(recipe_vals), max(dataset_vals)) * 1.15  # Add 15% padding for text labels
-            
+
             fig_bar = go.Figure()
-            
-            fig_bar.add_trace(go.Bar(
-                name='Cette Recette',
-                x=nutrients,
-                y=recipe_vals,
-                marker_color='#667eea',
-                text=[f'{v:.1f}' for v in recipe_vals],
-                textposition='outside',
-                hovertemplate='%{x}: %{y:.1f}<extra></extra>'
-            ))
-            
-            fig_bar.add_trace(go.Bar(
-                name='Moyenne Dataset',
-                x=nutrients,
-                y=dataset_vals,
-                marker_color='#dc3545',
-                opacity=0.6,
-                text=[f'{v:.1f}' for v in dataset_vals],
-                textposition='outside',
-                hovertemplate='%{x}: %{y:.1f}<extra></extra>'
-            ))
-            
+
+            fig_bar.add_trace(
+                go.Bar(
+                    name="Cette Recette",
+                    x=nutrients,
+                    y=recipe_vals,
+                    marker_color="#667eea",
+                    text=[f"{v:.1f}" for v in recipe_vals],
+                    textposition="outside",
+                    hovertemplate="%{x}: %{y:.1f}<extra></extra>",
+                )
+            )
+
+            fig_bar.add_trace(
+                go.Bar(
+                    name="Moyenne Dataset",
+                    x=nutrients,
+                    y=dataset_vals,
+                    marker_color="#dc3545",
+                    opacity=0.6,
+                    text=[f"{v:.1f}" for v in dataset_vals],
+                    textposition="outside",
+                    hovertemplate="%{x}: %{y:.1f}<extra></extra>",
+                )
+            )
+
             fig_bar.update_layout(
-                barmode='group',
+                barmode="group",
                 xaxis_title="",
                 yaxis_title="Valeur",
                 height=400,
                 margin=dict(l=40, r=40, t=30, b=60),
                 paper_bgcolor="rgba(0,0,0,0)",
                 plot_bgcolor="rgba(0,0,0,0)",
-                font={'color': "#1a1a1a", 'family': "Arial", 'size': 12},
-                xaxis={'tickangle': 0, 'tickfont': {'size': 12}},
-                yaxis={'range': [0, max_val], 'fixedrange': False},
-                legend=dict(
-                    orientation="h",
-                    yanchor="bottom",
-                    y=1.0,
-                    xanchor="center",
-                    x=0.5,
-                    font={'size': 11}
-                ),
+                font={"color": "#1a1a1a", "family": "Arial", "size": 12},
+                xaxis={"tickangle": 0, "tickfont": {"size": 12}},
+                yaxis={"range": [0, max_val], "fixedrange": False},
+                legend=dict(orientation="h", yanchor="bottom", y=1.0, xanchor="center", x=0.5, font={"size": 11}),
                 showlegend=True,
-                autosize=True
+                autosize=True,
             )
-            
-            fig_bar.update_yaxes(gridcolor='rgba(200,200,200,0.3)', zeroline=True, zerolinecolor='rgba(200,200,200,0.5)')
-            
-            st.plotly_chart(fig_bar, use_container_width=True, config={'displayModeBar': False})
-            
+
+            fig_bar.update_yaxes(
+                gridcolor="rgba(200,200,200,0.3)", zeroline=True, zerolinecolor="rgba(200,200,200,0.5)"
+            )
+
+            st.plotly_chart(fig_bar, use_container_width=True, config={"displayModeBar": False})
+
             # Add explanation note
             st.markdown(
                 "<p style='font-size: 0.8rem; color: #666; text-align: center; margin-top: -10px;'>"
                 "Calories en kcal | Autres nutriments en % de l'Apport Journalier Recommandé"
                 "</p>",
-                unsafe_allow_html=True
+                unsafe_allow_html=True,
             )
-            
+
         else:
             st.info("Données nutritionnelles détaillées non disponibles pour cette recette.")
     except Exception as e:
@@ -529,9 +507,7 @@ def render_recipe_detail(recipes_df: pd.DataFrame, recommender, recipe_id: int, 
     st.markdown("---")
 
     # Recommandations - Better aligned with spacing
-    recommendations_header = (
-        "<h2 style='text-align: center; color: #667eea; font-size: 2rem; margin: 2rem 0 1.5rem 0;'>🌟 Recettes similaires</h2>"
-    )
+    recommendations_header = "<h2 style='text-align: center; color: #667eea; font-size: 2rem; margin: 2rem 0 1.5rem 0;'>🌟 Recettes similaires</h2>"
     st.markdown(recommendations_header, unsafe_allow_html=True)
 
     with st.spinner("Calcul des recommandations..."):
@@ -547,17 +523,17 @@ def render_recipe_detail(recipes_df: pd.DataFrame, recommender, recipe_id: int, 
                     with col:
                         render_recipe_card_mini(recipe)
                         st.markdown("<div style='height: 0.5rem;'></div>", unsafe_allow_html=True)
-                        
+
                         # Bouton pour voir cette recette
                         if st.button(
-                            "📖 Voir la recette", 
-                            key=f"view_rec_{recipe['id']}", 
-                            use_container_width=True, 
-                            type="primary"
+                            "📖 Voir la recette",
+                            key=f"view_rec_{recipe['id']}",
+                            use_container_width=True,
+                            type="primary",
                         ):
                             if on_view_similar:
                                 on_view_similar(recipe["id"])
-            
+
             # Add spacing between rows
             if i + 4 < len(recommendations):
                 st.markdown("<div style='height: 1.5rem;'></div>", unsafe_allow_html=True)
