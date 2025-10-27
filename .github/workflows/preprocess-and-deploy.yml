@@ -1,0 +1,52 @@
+name: Preprocess and Deploy to Google Drive
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'preprocessing/**'
+      - '.github/workflows/preprocess-and-deploy.yml'
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  preprocess-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      - name: Install make
+        run: sudo apt-get update && sudo apt-get install -y make
+
+      - name: Install dependencies
+        run: make install
+
+      - name: Setup credentials
+        run: |
+          mkdir -p credentials
+          echo '${{ secrets.GOOGLE_CREDENTIALS }}' > credentials/credentials.json
+          echo '${{ secrets.GOOGLE_TOKEN }}' > credentials/token.json
+          echo '${{ secrets.GOOGLE_FOLDER_ID }}' > credentials/folder_id.txt
+
+      - name: Run preprocessing and deploy
+        run: uv run preprocessing/preprocess.py --deploy
+
+      - name: Upload logs as artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: preprocessing-logs
+          path: logs/
+          retention-days: 30
