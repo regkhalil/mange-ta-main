@@ -5,12 +5,110 @@ This module centralizes all CSV file reading operations from the data/ folder.
 All loading functions use standardized paths and consistent parameters.
 """
 
+import io
+import os
 from pathlib import Path
 from typing import List, Optional
 
 import numpy as np
 import pandas as pd
 import streamlit as st
+from google.auth.transport.requests import Request
+from google.oauth2.credentials import Credentials
+from googleapiclient.discovery import build
+
+# ============================================================================
+# ENVIRONMENT AND GOOGLE DRIVE CONFIGURATION
+# ============================================================================
+
+# Check if running in production mode
+ENV = os.getenv("STREAMLIT_ENV", "dev")
+IS_PRODUCTION = ENV == "prod"
+
+
+def _get_gdrive_service():
+    """
+    Gets an authenticated Google Drive API service.
+    Uses credentials from the credentials/ folder.
+
+    Returns:
+        Google Drive API service or None if authentication fails
+    """
+    try:
+        credentials_dir = Path.cwd() / "credentials"
+        token_path = credentials_dir / "token.json"
+
+        if not token_path.exists():
+            st.error("token.json not found. Cannot access Google Drive in production mode.")
+            return None
+
+        creds = Credentials.from_authorized_user_file(str(token_path))
+
+        # Refresh token if expired
+        if creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+
+        return build("drive", "v3", credentials=creds)
+    except Exception as e:
+        st.error(f"Failed to authenticate with Google Drive: {e}")
+        return None
+
+
+@st.cache_data(ttl=3600)  # Cache for 1 hour
+def _download_file_from_gdrive(filename: str) -> Optional[bytes]:
+    """
+    Downloads a file from Google Drive by name.
+
+    Args:
+        filename: Name of the file to download
+
+    Returns:
+        File content as bytes or None if download failed
+    """
+    try:
+        from googleapiclient.http import MediaIoBaseDownload
+
+        service = _get_gdrive_service()
+        if not service:
+            return None
+
+        # Get the folder ID (cached in credentials/folder_id.txt)
+        credentials_dir = Path.cwd() / "credentials"
+        folder_id_file = credentials_dir / "folder_id.txt"
+
+        if not folder_id_file.exists():
+            st.error("folder_id.txt not found. Cannot locate Google Drive folder.")
+            return None
+
+        folder_id = folder_id_file.read_text().strip()
+
+        # Search for the file in the folder
+        query = f"name='{filename}' and '{folder_id}' in parents and trashed=false"
+        results = service.files().list(q=query, spaces="drive", fields="files(id, name)").execute()
+        files = results.get("files", [])
+
+        if not files:
+            st.error(f"File not found in Google Drive: {filename}")
+            return None
+
+        file_id = files[0]["id"]
+
+        # Download the file
+        request = service.files().get_media(fileId=file_id)
+        file_buffer = io.BytesIO()
+        downloader = MediaIoBaseDownload(file_buffer, request)
+
+        done = False
+        while not done:
+            status, done = downloader.next_chunk()
+
+        file_buffer.seek(0)
+        return file_buffer.read()
+
+    except Exception as e:
+        st.error(f"Failed to download file from Google Drive: {e}")
+        return None
+
 
 # ============================================================================
 # CENTRALIZED CSV LOADING FUNCTIONS
@@ -43,6 +141,8 @@ def read_csv_file(
 ) -> pd.DataFrame:
     """
     Centralized function to read any CSV file from the data/ folder.
+    In production mode (ENV=prod), reads from Google Drive.
+    In development mode, reads from local data/ directory.
 
     This function standardizes CSV reading with error handling
     and integrated Streamlit caching.
@@ -61,12 +161,6 @@ def read_csv_file(
     Raises:
         FileNotFoundError: If the file does not exist
     """
-    data_path = _get_data_dir(data_dir)
-    file_path = data_path / filename
-
-    if not file_path.exists():
-        raise FileNotFoundError(f"File not found: {file_path}")
-
     # Merge default parameters with kwargs
     read_params = {"low_memory": False, **kwargs}
 
@@ -76,6 +170,22 @@ def read_csv_file(
         read_params["dtype"] = dtype
     if nrows is not None:
         read_params["nrows"] = nrows
+
+    # Production mode: read from Google Drive
+    if IS_PRODUCTION:
+        file_content = _download_file_from_gdrive(filename)
+        if file_content is None:
+            raise FileNotFoundError(f"File not found in Google Drive: {filename}")
+
+        df = pd.read_csv(io.BytesIO(file_content), **read_params)
+        return df
+
+    # Development mode: read from local file system
+    data_path = _get_data_dir(data_dir)
+    file_path = data_path / filename
+
+    if not file_path.exists():
+        raise FileNotFoundError(f"File not found: {file_path}")
 
     df = pd.read_csv(file_path, **read_params)
     return df
