@@ -319,9 +319,6 @@ def load_recipes(data_dir: str = None) -> pd.DataFrame:
         },
     )
 
-    if "stepsCount" not in df.columns and "n_steps" in df.columns:
-        df["stepsCount"] = df["n_steps"]
-
     # Note: nutrition_score, nutrition_grade, nutrition array, and calories
     # are already computed in preprocessing - no need to calculate here
     # Average rating can be added as a separate function when needed

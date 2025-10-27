@@ -109,7 +109,7 @@ class TestLoadingFunctions:
 
     def test_load_recipes_has_required_columns(self, recipes_df):
         """Test that loaded recipes have all required columns."""
-        required_columns = ["id", "n_ingredients", "stepsCount", "minutes", "calories", "is_vegetarian"]
+        required_columns = ["id", "n_ingredients", "n_steps", "minutes", "calories", "is_vegetarian"]
         for col in required_columns:
             assert col in recipes_df.columns, f"Missing required column: {col}"
 

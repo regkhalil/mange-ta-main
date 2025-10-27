@@ -56,9 +56,6 @@ def load_data() -> Tuple[Optional[pd.DataFrame], Optional[pd.DataFrame]]:
             if col in recipes_df.columns:
                 recipes_df[col] = pd.to_numeric(recipes_df[col], errors="coerce")
 
-        if "stepsCount" in recipes_df.columns:
-            recipes_df["n_steps"] = recipes_df["stepsCount"]
-
         # Supprimer les doublons
         recipes_df = recipes_df.drop_duplicates(subset=["id"])
 
