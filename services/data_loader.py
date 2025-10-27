@@ -29,24 +29,48 @@ IS_PRODUCTION = ENV == "prod"
 def _get_gdrive_service():
     """
     Gets an authenticated Google Drive API service.
-    Uses credentials from the credentials/ folder.
+    Uses credentials from Streamlit secrets (cloud) or credentials/ folder (local).
 
     Returns:
         Google Drive API service or None if authentication fails
     """
     try:
-        credentials_dir = Path.cwd() / "credentials"
-        token_path = credentials_dir / "token.json"
+        import json
 
-        if not token_path.exists():
-            st.error("token.json not found. Cannot access Google Drive in production mode.")
+        creds = None
+
+        # Try to use Streamlit secrets first (for Streamlit Cloud)
+        if hasattr(st, "secrets") and "google" in st.secrets:
+            try:
+                # Parse token from Streamlit secrets
+                token_data = json.loads(st.secrets["google"]["token"])
+                creds = Credentials.from_authorized_user_info(token_data)
+
+                # Refresh if expired
+                if creds and creds.expired and creds.refresh_token:
+                    creds.refresh(Request())
+            except Exception as e:
+                st.warning(f"Failed to load credentials from Streamlit secrets: {e}")
+                creds = None
+
+        # Fallback to local credentials file
+        if not creds:
+            credentials_dir = Path.cwd() / "credentials"
+            token_path = credentials_dir / "token.json"
+
+            if not token_path.exists():
+                st.error("token.json not found. Cannot access Google Drive in production mode.")
+                return None
+
+            creds = Credentials.from_authorized_user_file(str(token_path))
+
+            # Refresh token if expired
+            if creds.expired and creds.refresh_token:
+                creds.refresh(Request())
+
+        if not creds or not creds.valid:
+            st.error("Invalid or missing Google Drive credentials")
             return None
-
-        creds = Credentials.from_authorized_user_file(str(token_path))
-
-        # Refresh token if expired
-        if creds.expired and creds.refresh_token:
-            creds.refresh(Request())
 
         return build("drive", "v3", credentials=creds)
     except Exception as e:
@@ -58,6 +82,7 @@ def _get_gdrive_service():
 def _download_file_from_gdrive(filename: str) -> Optional[bytes]:
     """
     Downloads a file from Google Drive by name.
+    Uses folder ID from Streamlit secrets (cloud) or credentials/ folder (local).
 
     Args:
         filename: Name of the file to download
@@ -72,15 +97,26 @@ def _download_file_from_gdrive(filename: str) -> Optional[bytes]:
         if not service:
             return None
 
-        # Get the folder ID (cached in credentials/folder_id.txt)
-        credentials_dir = Path.cwd() / "credentials"
-        folder_id_file = credentials_dir / "folder_id.txt"
+        # Get folder ID from Streamlit secrets or local file
+        folder_id = None
 
-        if not folder_id_file.exists():
-            st.error("folder_id.txt not found. Cannot locate Google Drive folder.")
-            return None
+        # Try Streamlit secrets first (for Streamlit Cloud)
+        if hasattr(st, "secrets") and "google" in st.secrets:
+            try:
+                folder_id = st.secrets["google"]["folder_id"]
+            except Exception:
+                pass
 
-        folder_id = folder_id_file.read_text().strip()
+        # Fallback to local file
+        if not folder_id:
+            credentials_dir = Path.cwd() / "credentials"
+            folder_id_file = credentials_dir / "folder_id.txt"
+
+            if not folder_id_file.exists():
+                st.error("folder_id.txt not found. Cannot locate Google Drive folder.")
+                return None
+
+            folder_id = folder_id_file.read_text().strip()
 
         # Search for the file in the folder
         query = f"name='{filename}' and '{folder_id}' in parents and trashed=false"
