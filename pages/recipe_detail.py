@@ -1,15 +1,10 @@
 """Page de détail - Recipe detail page with enhanced styling."""
 
-import importlib
 import streamlit as st
 
 from services.data_loader import load_recipes
 from services.recommender import get_recommender
 from utils.navigation import navigate_to_recipe
-from utils import recipe_detail
-
-# Force reload of the module to get latest changes
-importlib.reload(recipe_detail)
 from utils.recipe_detail import render_recipe_detail
 
 st.set_page_config(page_title="Détail Recette - Mangetamain", page_icon="📖", layout="wide")
