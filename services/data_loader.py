@@ -282,13 +282,15 @@ def read_raw_interactions(data_dir: Optional[str] = None, usecols: Optional[List
 def load_recipes(data_dir: str = None) -> pd.DataFrame:
     """
     Loads and preprocesses recipe data from preprocessed_recipes.csv
+    
+    The file now includes popularity statistics (review_count, average_rating, popularity_score)
+    calculated from RAW_interactions.csv.
 
     Returns:
-        DataFrame with preprocessed columns for the application
+        DataFrame with preprocessed columns including popularity statistics
     """
 
-    # Load enriched preprocessed data (uses read_preprocessed_recipes)
-    # Note: This already includes description, nutrition, tags, etc. from preprocessing
+    # Load enriched preprocessed data with popularity statistics
     df = read_csv_file(
         "preprocessed_recipes.csv",
         data_dir=data_dir,
@@ -297,8 +299,33 @@ def load_recipes(data_dir: str = None) -> pd.DataFrame:
             "minutes": "float32",
             "n_steps": "float32",
             "n_ingredients": "float32",
+            "review_count": "int32",
+            "average_rating": "float32",
+            "popularity_score": "float32",
         },
     )
+
+    # Verify that popularity columns exist
+    required_popularity_cols = ["review_count", "average_rating", "popularity_score"]
+    missing_cols = [col for col in required_popularity_cols if col not in df.columns]
+    
+    if missing_cols:
+        logger.warning(f"Colonnes de popularité manquantes: {missing_cols}")
+        logger.warning("Utilisation de valeurs par défaut pour la popularité")
+        # Add default values if columns are missing
+        for col in missing_cols:
+            if col == "review_count":
+                df[col] = 0
+            elif col == "average_rating":
+                df[col] = 3.0
+            elif col == "popularity_score":
+                df[col] = 0.0
+    else:
+        logger.info(f"Données de popularité chargées pour {len(df)} recettes")
+        recipes_with_reviews = df[df["review_count"] > 0]
+        logger.info(f"Recettes avec avis: {len(recipes_with_reviews)} ({len(recipes_with_reviews)/len(df)*100:.1f}%)")
+
+    return df
 
     # Note: nutrition_score, nutrition_grade, nutrition array, and calories
     # are already computed in preprocessing - no need to calculate here

@@ -340,17 +340,26 @@ def render_recipe_card(recipe: pd.Series, recipe_id: int) -> None:
             except (ValueError, SyntaxError) as e:
                 logger.warning(f"Error parsing steps for recipe {recipe_id}: {e}")
 
-        # Rating
+        # Rating avec nombre d'avis
         rating = float(recipe.get("average_rating", 4.0))
+        review_count = int(recipe.get("review_count", 0))
         full_stars = int(rating)
         half_star = (rating - full_stars) >= 0.5
         empty_stars = 5 - full_stars - int(half_star)
 
         stars_html = "⭐" * full_stars + ("✨" if half_star else "") + "☆" * empty_stars
-        rating_display = (  # noqa: E501
-            f'<div style="margin-top: 0.5rem; font-size: 0.9rem; color: #ffc107;">'
-            f'{stars_html} <span style="color: #e0e0e0;">{rating:.1f}/5</span></div>'
-        )
+        
+        # Affichage avec nombre d'avis si disponible
+        if review_count > 0:
+            rating_display = (  # noqa: E501
+                f'<div style="margin-top: 0.5rem; font-size: 0.9rem; color: #ffc107;">'
+                f'{stars_html} <span style="color: #e0e0e0;">{rating:.1f}/5 ({review_count} avis)</span></div>'
+            )
+        else:
+            rating_display = (  # noqa: E501
+                f'<div style="margin-top: 0.5rem; font-size: 0.9rem; color: #ffc107;">'
+                f'{stars_html} <span style="color: #e0e0e0;">{rating:.1f}/5</span></div>'
+            )
 
         # Carte HTML
         card_html = f"""
@@ -482,8 +491,16 @@ def page_recherche(recipes_df: pd.DataFrame, recommender) -> None:
     if search_query and search_query.strip():
         filtered_recipes = _apply_keyword_search(filtered_recipes, search_query)
     else:
-        # Trier par popularité par défaut (average_rating décroissant) quand il n'y a pas de recherche
-        if "average_rating" in filtered_recipes.columns:
+        # Trier par popularité par défaut en utilisant le score combiné
+        if "popularity_score" in filtered_recipes.columns:
+            # Tri principal par popularity_score, puis par average_rating en cas d'égalité
+            filtered_recipes = filtered_recipes.sort_values(
+                ["popularity_score", "average_rating"], 
+                ascending=[False, False], 
+                na_position="last"
+            )
+        elif "average_rating" in filtered_recipes.columns:
+            # Fallback vers average_rating seul si popularity_score n'existe pas
             filtered_recipes = filtered_recipes.sort_values("average_rating", ascending=False, na_position="last")
 
     # Afficher le nombre de résultats
