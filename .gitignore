@@ -9,6 +9,9 @@ __pycache__/
 # Streamlit
 .streamlit/secrets.toml
 
+# Google Drive API credentials (sensitive)
+credentials/
+
 # Ruff cache
 .ruff_cache/
 
