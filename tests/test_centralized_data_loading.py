@@ -24,7 +24,6 @@ from services.data_loader import (
     load_users,
     read_csv_file,
     read_interactions_split,
-    read_pp_recipes,
     read_pp_users,
     read_raw_interactions,
 )
@@ -81,14 +80,6 @@ class TestCentralizedCSVFunctions:
         """Test that FileNotFoundError is raised for non-existent files."""
         with pytest.raises(FileNotFoundError):
             read_csv_file("nonexistent_file.csv", data_dir=data_dir)
-
-    def test_read_pp_recipes(self, data_dir):
-        """Test loading PP recipes."""
-        df = read_pp_recipes(data_dir=data_dir, nrows=100)
-        assert isinstance(df, pd.DataFrame)
-        assert len(df) > 0
-        assert len(df) <= 100
-        assert "id" in df.columns
 
     def test_read_pp_users(self, data_dir):
         """Test loading user profiles."""

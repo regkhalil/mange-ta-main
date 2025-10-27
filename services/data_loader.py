@@ -253,21 +253,6 @@ def read_csv_file(
 
 
 @st.cache_data(hash_funcs={list: lambda x: str(x)})
-def read_pp_recipes(data_dir: Optional[str] = None, nrows: Optional[int] = None) -> pd.DataFrame:
-    """
-    Loads the PP_recipes.csv file.
-
-    Args:
-        data_dir: Directory containing the data
-        nrows: Maximum number of rows to read
-
-    Returns:
-        pd.DataFrame: Preprocessed recipes (PP format)
-    """
-    return read_csv_file("PP_recipes.csv", data_dir=data_dir, nrows=nrows)
-
-
-@st.cache_data(hash_funcs={list: lambda x: str(x)})
 def read_pp_users(data_dir: Optional[str] = None) -> pd.DataFrame:
     """
     Loads the PP_users.csv file.
@@ -329,8 +314,7 @@ def read_interactions_split(split: str = "train", data_dir: Optional[str] = None
 @st.cache_data(show_spinner=False, hash_funcs={list: lambda x: str(x)})  # Disable default spinner, we manage manually
 def load_recipes(data_dir: str = None) -> pd.DataFrame:
     """
-    Loads and preprocesses recipe data from PP_recipes.csv and RAW_recipes.csv.
-    Merges both to have features AND searchable texts.
+    Loads and preprocesses recipe data from preprocessed_recipes.csv
 
     Returns:
         DataFrame with preprocessed columns for the application
