@@ -36,7 +36,7 @@ except ImportError:
     logger.warning("NLTK not available. Using fallback proper noun list.")
 
 
-def clean_text(text: str, apply_title_case: bool = False, is_sentence: bool = False) -> str:
+def clean_text(text: str, apply_title_case: bool = False, is_sentence: bool = False, fast_mode: bool = False) -> str:
     """
     Clean and properly format text strings.
     
@@ -47,12 +47,26 @@ def clean_text(text: str, apply_title_case: bool = False, is_sentence: bool = Fa
         text: Raw text string
         apply_title_case: If True, applies title case capitalization (for names/titles)
         is_sentence: If True, capitalizes first letter only (for descriptions/sentences)
+        fast_mode: If True, skip expensive NLTK processing (for steps/tags)
         
     Returns:
         Cleaned and formatted text
     """
     if not text or pd.isna(text):
         return ""
+    
+    # Fast mode: minimal cleaning for steps/tags
+    if fast_mode:
+        # Remove extra whitespace
+        text = re.sub(r'\s+', ' ', text).strip()
+        # Fix common punctuation issues
+        text = re.sub(r'\s+([.,!?;:])', r'\1', text)
+        # Capitalize first letter if it's a sentence
+        if is_sentence and text:
+            text = text[0].upper() + text[1:] if len(text) > 1 else text.upper()
+        return text
+    
+    # Full cleaning (original code for descriptions/names)
     
     # Restore common contractions from spaced versions
     contraction_patterns = {
@@ -309,7 +323,8 @@ def _apply_smart_title_case(text: str) -> str:
 def clean_list_column(
     text_or_list: Union[str, List[str]], 
     apply_title_case: bool = False,
-    capitalize_first: bool = False
+    capitalize_first: bool = False,
+    fast_mode: bool = False
 ) -> List[str]:
     """
     Clean a column that contains a list stored as a string.
@@ -322,6 +337,7 @@ def clean_list_column(
                      or an actual list
         apply_title_case: If True, applies title case to each list item (for names)
         capitalize_first: If True, capitalizes first letter only (for sentences like steps)
+        fast_mode: If True, skip expensive NLTK processing (for steps/tags)
         
     Returns:
         List of cleaned strings
@@ -349,7 +365,8 @@ def clean_list_column(
             cleaned = clean_text(
                 item, 
                 apply_title_case=apply_title_case,
-                is_sentence=capitalize_first
+                is_sentence=capitalize_first,
+                fast_mode=fast_mode
             )
             if cleaned:  # Only add non-empty strings
                 cleaned_items.append(cleaned)
@@ -473,15 +490,15 @@ def clean_recipe_data(
     
     # Clean list columns
     if clean_steps and 'steps' in df.columns:
-        logger.info("Cleaning 'steps' column")
+        logger.info("Cleaning 'steps' column (fast mode)")
         df['steps_cleaned'] = df['steps'].apply(
-            lambda x: clean_list_column(x, apply_title_case=False, capitalize_first=True)
+            lambda x: clean_list_column(x, apply_title_case=False, capitalize_first=True, fast_mode=True)
         )
     
     if clean_tags and 'tags' in df.columns:
-        logger.info("Cleaning 'tags' column")
+        logger.info("Cleaning 'tags' column (fast mode)")
         df['tags_cleaned'] = df['tags'].apply(
-            lambda x: clean_list_column(x, apply_title_case=False, capitalize_first=False)
+            lambda x: clean_list_column(x, apply_title_case=False, capitalize_first=False, fast_mode=True)
         )
     
     if clean_ingredients and 'ingredients' in df.columns:
