@@ -90,7 +90,7 @@ def render_recipe_card(recipe: pd.Series, show_similarity: bool = False, similar
 
         with col_veg:
             # Badge végétarien
-            if recipe.get("isVegetarian", False) or recipe.get("is_vegetarian", False):
+            if recipe.get("is_vegetarian", False):
                 st.markdown(
                     """
                 <div style="

@@ -109,7 +109,7 @@ class TestLoadingFunctions:
 
     def test_load_recipes_has_required_columns(self, recipes_df):
         """Test that loaded recipes have all required columns."""
-        required_columns = ["id", "ingredientCount", "stepsCount", "totalTime", "calories", "isVegetarian"]
+        required_columns = ["id", "ingredientCount", "stepsCount", "totalTime", "calories", "is_vegetarian"]
         for col in required_columns:
             assert col in recipes_df.columns, f"Missing required column: {col}"
 
@@ -169,7 +169,7 @@ class TestDataConsistency:
 
     def test_vegetarian_column_type(self, recipes_df):
         """Test that vegetarian column is boolean."""
-        assert recipes_df["isVegetarian"].dtype == bool or recipes_df["isVegetarian"].dtype == "object"
+        assert recipes_df["is_vegetarian"].dtype == bool or recipes_df["is_vegetarian"].dtype == "object"
 
     def test_nutrition_grade_values(self, recipes_df):
         """Test that nutrition grades are valid."""

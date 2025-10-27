@@ -48,8 +48,8 @@ def search_recipes(
     )
 
     # Filtre végétarien
-    if vegetarian_only and "isVegetarian" in recipes_df.columns:
-        mask = mask & recipes_df["isVegetarian"]
+    if vegetarian_only and "is_vegetarian" in recipes_df.columns:
+        mask = mask & recipes_df["is_vegetarian"]
 
     # Filtre grades nutritionnels
     if nutrition_grades and len(nutrition_grades) > 0 and "nutrition_grade" in recipes_df.columns:

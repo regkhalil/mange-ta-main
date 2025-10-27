@@ -288,7 +288,7 @@ def render_recipe_card(recipe: pd.Series, recipe_id: int) -> None:
         nutri_score = float(recipe.get("nutrition_score", 50))
         nutri_color = NUTRISCORE_COLORS.get(nutri_grade, "#7f8c8d")
 
-        is_veg = recipe.get("isVegetarian", False) or recipe.get("is_vegetarian", False)
+        is_veg = recipe.get("is_vegetarian", False)
         prep_time = int(recipe.get("totalTime", recipe.get("minutes", 30)))
         n_ingredients = int(recipe.get("n_ingredients", 0))
 
@@ -507,7 +507,7 @@ def _apply_keyword_search(df: pd.DataFrame, search_query: str) -> pd.DataFrame:
     contains_vegan = any(kw in query_lower for kw in VEGAN_KEYWORDS)
     contains_meat = any(kw in query_lower or any(kw in w for w in query_words) for kw in MEAT_KEYWORDS)
 
-    veg_col = "isVegetarian" if "isVegetarian" in df.columns else "is_vegetarian"
+    veg_col = "is_vegetarian"
 
     if contains_vegan and veg_col in df.columns:
         df = df[df[veg_col].fillna(False)]

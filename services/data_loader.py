@@ -329,13 +329,6 @@ def load_recipes(data_dir: str = None) -> pd.DataFrame:
     if "totalTime" not in df.columns and "minutes" in df.columns:
         df["totalTime"] = df["minutes"].clip(5, 300)  # Limit between 5 and 300 minutes
 
-    # Create alias for compatibility
-    if "isVegetarian" not in df.columns:
-        if "is_vegetarian" in df.columns:
-            df["isVegetarian"] = df["is_vegetarian"]
-        else:
-            df["isVegetarian"] = False
-
     # Note: nutrition_score, nutrition_grade, nutrition array, and calories
     # are already computed in preprocessing - no need to calculate here
     # Average rating can be added as a separate function when needed
@@ -399,7 +392,7 @@ def get_recipe_details(recipe_id: int, recipes_df: pd.DataFrame) -> dict:
         "steps": len(recipe["steps_tokens"]),
         "calories": recipe["calories"],
         "totalTime": recipe["totalTime"],
-        "isVegetarian": recipe["isVegetarian"],
+        "is_vegetarian": recipe["is_vegetarian"],
         "techniques": recipe["techniques"],
         "calorie_level": recipe["calorie_level"],
     }
@@ -452,10 +445,7 @@ def filter_recipes(
 
     # Vegetarian filter
     if vegetarian_only:
-        if "isVegetarian" in result.columns:
-            result = result[result["isVegetarian"]]
-        elif "is_vegetarian" in result.columns:
-            result = result[result["is_vegetarian"]]
+        result = result[result["is_vegetarian"]]
 
     # Nutritional grades filter
     if nutrition_grades and len(nutrition_grades) > 0 and "nutrition_grade" in result.columns:
@@ -480,6 +470,6 @@ def get_recipe_stats(recipes_df: pd.DataFrame) -> dict:
         "median_prep_time": recipes_df["totalTime"].median(),
         "avg_ingredients": recipes_df["ingredientCount"].mean(),
         "avg_calories": recipes_df["calories"].mean(),
-        "vegetarian_count": recipes_df["isVegetarian"].sum(),
-        "vegetarian_percentage": (recipes_df["isVegetarian"].sum() / len(recipes_df)) * 100,
+        "vegetarian_count": recipes_df["is_vegetarian"].sum(),
+        "vegetarian_percentage": (recipes_df["is_vegetarian"].sum() / len(recipes_df)) * 100,
     }

@@ -18,7 +18,7 @@ def render_recipe_card_mini(recipe: pd.Series) -> None:
     nutri_colors = {"A": "#238B45", "B": "#85BB2F", "C": "#FECC00", "D": "#FF9500", "E": "#E63946"}
     nutri_color = nutri_colors.get(nutri_grade, "#7f8c8d")
 
-    is_veg = recipe.get("isVegetarian", False) or recipe.get("is_vegetarian", False)
+    is_veg = recipe.get("is_vegetarian", False)
     prep_time = int(recipe.get("totalTime", recipe.get("minutes", 30)))
     n_ingredients = int(recipe.get("n_ingredients", 0))
 
@@ -199,7 +199,7 @@ def render_recipe_detail(recipes_df: pd.DataFrame, recommender, recipe_id: int, 
         except (ValueError, IndexError, SyntaxError):
             calories = 0
 
-    is_veg = target_recipe.get("isVegetarian", target_recipe.get("is_vegetarian", False))
+    is_veg = target_recipe.get("is_vegetarian", False)
     nutri_grade = target_recipe.get("nutrition_grade", "C")
     nutri_score = float(target_recipe.get("nutrition_score", 50))
 

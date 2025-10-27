@@ -119,7 +119,7 @@ class RecipeRecommender:
         ]
 
         if vegetarian_only:
-            filtered = filtered[filtered["isVegetarian"]]
+            filtered = filtered[filtered["is_vegetarian"]]
 
         # Retourner les k premières recettes
         results = []
@@ -162,7 +162,7 @@ def format_recommendations_for_display(recommendations: List[Tuple[pd.Series, fl
                 "ingredients": recipe["ingredientCount"],
                 "time": recipe["totalTime"],
                 "calories": recipe["calories"],
-                "vegetarian": recipe["isVegetarian"],
+                "vegetarian": recipe["is_vegetarian"],
                 "similarity": f"{score:.2%}",
                 "score": score,
             }

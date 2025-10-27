@@ -107,7 +107,7 @@ def render_recipe_card_enhanced(recipe: pd.Series, show_similar_button: bool = T
 
         with col4:
             # Badge végétarien
-            if recipe.get("isVegetarian", False):
+            if recipe.get("is_vegetarian", False):
                 st.markdown(
                     """
                 <div style='text-align: center; padding: 0.5rem; background: #85BB2F; border-radius: 6px; color: white;'>
