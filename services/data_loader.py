@@ -6,6 +6,7 @@ All loading functions use standardized paths and consistent parameters.
 """
 
 import io
+import logging
 import os
 from pathlib import Path
 from typing import List, Optional
@@ -16,6 +17,9 @@ import streamlit as st
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
+
+# Setup logger
+logger = logging.getLogger(__name__)
 
 # ============================================================================
 # ENVIRONMENT AND GOOGLE DRIVE CONFIGURATION
@@ -29,7 +33,7 @@ IS_PRODUCTION = ENV == "prod"
 def _get_gdrive_service():
     """
     Gets an authenticated Google Drive API service.
-    Uses credentials from Streamlit secrets (cloud) or credentials/ folder (local).
+    Uses credentials from Streamlit secrets.
 
     Returns:
         Google Drive API service or None if authentication fails
@@ -37,44 +41,35 @@ def _get_gdrive_service():
     try:
         import json
 
-        creds = None
-
-        # Try to use Streamlit secrets first (for Streamlit Cloud)
-        if hasattr(st, "secrets") and "google" in st.secrets:
-            try:
-                # Parse token from Streamlit secrets
-                token_data = json.loads(st.secrets["google"]["token"])
-                creds = Credentials.from_authorized_user_info(token_data)
-
-                # Refresh if expired
-                if creds and creds.expired and creds.refresh_token:
-                    creds.refresh(Request())
-            except Exception as e:
-                st.warning(f"Failed to load credentials from Streamlit secrets: {e}")
-                creds = None
-
-        # Fallback to local credentials file
-        if not creds:
-            credentials_dir = Path.cwd() / "credentials"
-            token_path = credentials_dir / "token.json"
-
-            if not token_path.exists():
-                st.error("token.json not found. Cannot access Google Drive in production mode.")
-                return None
-
-            creds = Credentials.from_authorized_user_file(str(token_path))
-
-            # Refresh token if expired
-            if creds.expired and creds.refresh_token:
-                creds.refresh(Request())
-
-        if not creds or not creds.valid:
-            st.error("Invalid or missing Google Drive credentials")
+        # Get token from Streamlit secrets
+        if "google" not in st.secrets or "token" not in st.secrets["google"]:
+            error_msg = "Google Drive credentials not found in Streamlit secrets."
+            logger.error(error_msg)
+            st.error(error_msg)
             return None
 
+        # Parse token from Streamlit secrets
+        token_data = json.loads(st.secrets["google"]["token"])
+        creds = Credentials.from_authorized_user_info(token_data)
+
+        # Refresh if expired
+        if creds.expired and creds.refresh_token:
+            logger.info("Refreshing expired Google Drive token...")
+            creds.refresh(Request())
+            logger.info("Token refreshed successfully")
+
+        if not creds or not creds.valid:
+            error_msg = "Invalid or missing Google Drive credentials"
+            logger.error(error_msg)
+            st.error(error_msg)
+            return None
+
+        logger.info("Successfully authenticated with Google Drive")
         return build("drive", "v3", credentials=creds)
     except Exception as e:
-        st.error(f"Failed to authenticate with Google Drive: {e}")
+        error_msg = f"Failed to authenticate with Google Drive: {e}"
+        logger.error(error_msg, exc_info=True)
+        st.error(error_msg)
         return None
 
 
@@ -82,7 +77,7 @@ def _get_gdrive_service():
 def _download_file_from_gdrive(filename: str) -> Optional[bytes]:
     """
     Downloads a file from Google Drive by name.
-    Uses folder ID from Streamlit secrets (cloud) or credentials/ folder (local).
+    Uses folder ID from Streamlit secrets.
 
     Args:
         filename: Name of the file to download
@@ -93,30 +88,20 @@ def _download_file_from_gdrive(filename: str) -> Optional[bytes]:
     try:
         from googleapiclient.http import MediaIoBaseDownload
 
+        logger.info(f"Attempting to download {filename} from Google Drive...")
+
         service = _get_gdrive_service()
         if not service:
             return None
 
-        # Get folder ID from Streamlit secrets or local file
-        folder_id = None
+        # Get folder ID from Streamlit secrets
+        if "google" not in st.secrets or "folder_id" not in st.secrets["google"]:
+            error_msg = "Google Drive folder_id not found in Streamlit secrets."
+            logger.error(error_msg)
+            st.error(error_msg)
+            return None
 
-        # Try Streamlit secrets first (for Streamlit Cloud)
-        if hasattr(st, "secrets") and "google" in st.secrets:
-            try:
-                folder_id = st.secrets["google"]["folder_id"]
-            except Exception:
-                pass
-
-        # Fallback to local file
-        if not folder_id:
-            credentials_dir = Path.cwd() / "credentials"
-            folder_id_file = credentials_dir / "folder_id.txt"
-
-            if not folder_id_file.exists():
-                st.error("folder_id.txt not found. Cannot locate Google Drive folder.")
-                return None
-
-            folder_id = folder_id_file.read_text().strip()
+        folder_id = st.secrets["google"]["folder_id"]
 
         # Search for the file in the folder
         query = f"name='{filename}' and '{folder_id}' in parents and trashed=false"
@@ -124,10 +109,13 @@ def _download_file_from_gdrive(filename: str) -> Optional[bytes]:
         files = results.get("files", [])
 
         if not files:
-            st.error(f"File not found in Google Drive: {filename}")
+            error_msg = f"File not found in Google Drive: {filename}"
+            logger.error(error_msg)
+            st.error(error_msg)
             return None
 
         file_id = files[0]["id"]
+        logger.info(f"Found {filename} in Google Drive (ID: {file_id})")
 
         # Download the file
         request = service.files().get_media(fileId=file_id)
@@ -137,12 +125,18 @@ def _download_file_from_gdrive(filename: str) -> Optional[bytes]:
         done = False
         while not done:
             status, done = downloader.next_chunk()
+            if status:
+                logger.debug(f"Download progress: {int(status.progress() * 100)}%")
 
         file_buffer.seek(0)
-        return file_buffer.read()
+        file_content = file_buffer.read()
+        logger.info(f"Successfully downloaded {filename} ({len(file_content)} bytes)")
+        return file_content
 
     except Exception as e:
-        st.error(f"Failed to download file from Google Drive: {e}")
+        error_msg = f"Failed to download {filename} from Google Drive: {e}"
+        logger.error(error_msg, exc_info=True)
+        st.error(error_msg)
         return None
 
 
@@ -207,12 +201,17 @@ def read_csv_file(
     if nrows is not None:
         read_params["nrows"] = nrows
 
-    # Production mode: read from Google Drive
+    # Production mode: read from Google Drive (required)
     if IS_PRODUCTION:
         file_content = _download_file_from_gdrive(filename)
-        if file_content is None:
-            raise FileNotFoundError(f"File not found in Google Drive: {filename}")
 
+        if file_content is None:
+            raise FileNotFoundError(
+                f"Failed to download {filename} from Google Drive. "
+                "Ensure Google Drive credentials are configured correctly."
+            )
+
+        # Successfully downloaded from Google Drive
         # When reading from BytesIO, pandas sometimes auto-converts string representations
         # of lists to actual list objects. Use converters to force them to stay as strings.
         # Common columns that contain list-like strings

@@ -2,6 +2,8 @@
 
 import ast
 import logging
+import os
+from datetime import datetime
 
 import pandas as pd
 import plotly.express as px
@@ -13,15 +15,26 @@ from services.recommender import get_recommender
 from utils.navigation import navigate_to_recipe
 
 # Configuration
+# Create logs directory if it doesn't exist
+os.makedirs("logs", exist_ok=True)
+
+# Create log filename with timestamp for this session
+timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+log_filename = f"logs/app_{timestamp}.log"
+
+# Configure logging with both file and console handlers
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     handlers=[
-        logging.FileHandler("logs/app.log"),
-        logging.FileHandler("logs/errors.log", mode="a"),
+        logging.FileHandler(log_filename),
+        logging.StreamHandler(),  # Log to console
     ],
 )
 logger = logging.getLogger(__name__)
+
+logger.info(f"Application started. Logging to {log_filename}")
+logger.info(f"Environment: {os.getenv('STREAMLIT_ENV', 'dev')}")
 
 # Constantes
 ITEMS_PER_PAGE = 12
@@ -325,7 +338,7 @@ def render_recipe_card(recipe: pd.Series, recipe_id: int) -> None:
                         first_step = str(steps_list[0])[:80]
                         description = first_step + ("..." if len(first_step) == 80 else "")
             except (ValueError, SyntaxError) as e:
-                logger.warning(f"Erreur parsing steps recette {recipe_id}: {e}")
+                logger.warning(f"Error parsing steps for recipe {recipe_id}: {e}")
 
         # Rating
         rating = float(recipe.get("average_rating", 4.0))
@@ -391,8 +404,8 @@ def render_recipe_card(recipe: pd.Series, recipe_id: int) -> None:
         st.markdown(card_html, unsafe_allow_html=True)
 
     except Exception as e:
-        logger.error(f"Erreur lors du rendu de la carte recette {recipe_id}: {e}")
-        st.error(f"Impossible d'afficher la recette #{recipe_id}")
+        logger.error(f"Error rendering recipe card for recipe {recipe_id}: {e}")
+        st.error(f"Unable to display recipe #{recipe_id}")
 
 
 def page_recherche(recipes_df: pd.DataFrame, recommender) -> None:
@@ -685,13 +698,13 @@ def _render_stats_table(recipes_df: pd.DataFrame) -> None:
 
 @st.cache_resource
 def initialize_app() -> tuple[pd.DataFrame, object]:
-    """Charge donnees et initialise le recommendeur."""
-    logger.info("Initialisation - Chargement des donnees")
+    """Load data and initialize recommender."""
+    logger.info("Initialization - Loading data")
     recipes_df = load_recipes()
-    logger.info(f"Recettes chargees: {len(recipes_df)}")
+    logger.info(f"Recipes loaded: {len(recipes_df)}")
 
     recommender = get_recommender(recipes_df)
-    logger.info("Systeme de recommandation initialise")
+    logger.info("Recommendation system initialized")
 
     return recipes_df, recommender
 

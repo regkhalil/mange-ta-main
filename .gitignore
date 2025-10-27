@@ -8,6 +8,8 @@ __pycache__/
 
 # Streamlit
 .streamlit/secrets.toml
+.streamlit.bak/
+.streamlit/
 
 # Google Drive API credentials (sensitive)
 credentials/
@@ -223,3 +225,4 @@ Makefile
 
 # data directory
 data/
+services/data_loader.py
