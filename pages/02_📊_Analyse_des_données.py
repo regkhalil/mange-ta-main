@@ -17,7 +17,7 @@ import plotly.graph_objects as go
 import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from services.data_loader import read_preprocessed_recipes, read_raw_interactions
+from services.data_loader import load_recipes, read_raw_interactions
 
 # Configuration de la page
 st.set_page_config(page_title="Analyse des données", page_icon="📊", layout="wide")
@@ -35,7 +35,7 @@ def load_data() -> Tuple[Optional[pd.DataFrame], Optional[pd.DataFrame]]:
     """
     try:
         # Utiliser les fonctions centralisées
-        recipes_df = read_preprocessed_recipes()
+        recipes_df = load_recipes()
         interactions_df = read_raw_interactions()
 
         # Nettoyer et convertir les colonnes numériques

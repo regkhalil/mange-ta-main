@@ -26,9 +26,7 @@ from services.data_loader import (
     read_interactions_split,
     read_pp_recipes,
     read_pp_users,
-    read_preprocessed_recipes,
     read_raw_interactions,
-    read_raw_recipes,
 )
 
 
@@ -84,22 +82,6 @@ class TestCentralizedCSVFunctions:
         with pytest.raises(FileNotFoundError):
             read_csv_file("nonexistent_file.csv", data_dir=data_dir)
 
-    def test_read_preprocessed_recipes(self, data_dir):
-        """Test loading preprocessed recipes."""
-        df = read_preprocessed_recipes(data_dir=data_dir)
-        assert isinstance(df, pd.DataFrame)
-        assert len(df) > 0
-        assert "id" in df.columns
-
-    def test_read_raw_recipes(self, data_dir):
-        """Test loading raw recipes."""
-        df = read_raw_recipes(data_dir=data_dir, usecols=["id", "description"], nrows=100)
-        assert isinstance(df, pd.DataFrame)
-        assert len(df) > 0
-        assert len(df) <= 100
-        assert "id" in df.columns
-        assert "description" in df.columns
-
     def test_read_pp_recipes(self, data_dir):
         """Test loading PP recipes."""
         df = read_pp_recipes(data_dir=data_dir, nrows=100)
@@ -114,9 +96,9 @@ class TestCentralizedCSVFunctions:
         assert isinstance(df, pd.DataFrame)
         assert len(df) > 0
         # User column can be named 'u', 'user_id', or 'id'
-        assert any(col in df.columns for col in ["u", "user_id", "id"]), (
-            f"No user ID column found. Available columns: {list(df.columns)}"
-        )
+        assert any(
+            col in df.columns for col in ["u", "user_id", "id"]
+        ), f"No user ID column found. Available columns: {list(df.columns)}"
 
     def test_read_raw_interactions(self, data_dir):
         """Test loading raw interactions."""

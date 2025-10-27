@@ -11,7 +11,6 @@ import os
 from pathlib import Path
 from typing import List, Optional
 
-import numpy as np
 import pandas as pd
 import streamlit as st
 from google.auth.transport.requests import Request
@@ -254,47 +253,6 @@ def read_csv_file(
 
 
 @st.cache_data(hash_funcs={list: lambda x: str(x)})
-def read_preprocessed_recipes(data_dir: Optional[str] = None) -> pd.DataFrame:
-    """
-    Loads the preprocessed_recipes.csv file with optimized data types.
-
-    Args:
-        data_dir: Directory containing the data
-
-    Returns:
-        pd.DataFrame: Preprocessed recipes
-    """
-    return read_csv_file(
-        "preprocessed_recipes.csv",
-        data_dir=data_dir,
-        dtype={
-            "id": "int64",
-            "minutes": "float32",
-            "n_steps": "float32",
-            "n_ingredients": "float32",
-        },
-    )
-
-
-@st.cache_data(hash_funcs={list: lambda x: str(x)})
-def read_raw_recipes(
-    data_dir: Optional[str] = None, usecols: Optional[List[str]] = None, nrows: Optional[int] = None
-) -> pd.DataFrame:
-    """
-    Loads the RAW_recipes.csv file.
-
-    Args:
-        data_dir: Directory containing the data
-        usecols: Specific columns to load (e.g., ["id", "description"])
-        nrows: Maximum number of rows to read
-
-    Returns:
-        pd.DataFrame: Raw recipes
-    """
-    return read_csv_file("RAW_recipes.csv", data_dir=data_dir, usecols=usecols, nrows=nrows)
-
-
-@st.cache_data(hash_funcs={list: lambda x: str(x)})
 def read_pp_recipes(data_dir: Optional[str] = None, nrows: Optional[int] = None) -> pd.DataFrame:
     """
     Loads the PP_recipes.csv file.
@@ -377,66 +335,40 @@ def load_recipes(data_dir: str = None) -> pd.DataFrame:
     Returns:
         DataFrame with preprocessed columns for the application
     """
-    data_dir_path = _get_data_dir(data_dir)
 
-    # Check if preprocessed file exists
-    preprocessed_path = data_dir_path / "preprocessed_recipes.csv"
+    # Load enriched preprocessed data (uses read_preprocessed_recipes)
+    # Note: This already includes description, nutrition, tags, etc. from preprocessing
+    df = read_csv_file(
+        "preprocessed_recipes.csv",
+        data_dir=data_dir,
+        dtype={
+            "id": "int64",
+            "minutes": "float32",
+            "n_steps": "float32",
+            "n_ingredients": "float32",
+        },
+    )
 
-    if preprocessed_path.exists():
-        # Load enriched preprocessed data (uses read_preprocessed_recipes)
-        # Note: This already includes description, nutrition, tags, etc. from preprocessing
-        df = read_preprocessed_recipes(data_dir=data_dir)
+    # Create derived columns for UI (if they don't exist)
+    if "ingredientCount" not in df.columns and "n_ingredients" in df.columns:
+        df["ingredientCount"] = df["n_ingredients"]
 
-        # Create derived columns for UI (if they don't exist)
-        if "ingredientCount" not in df.columns and "n_ingredients" in df.columns:
-            df["ingredientCount"] = df["n_ingredients"]
+    if "stepsCount" not in df.columns and "n_steps" in df.columns:
+        df["stepsCount"] = df["n_steps"]
 
-        if "stepsCount" not in df.columns and "n_steps" in df.columns:
-            df["stepsCount"] = df["n_steps"]
+    if "totalTime" not in df.columns and "minutes" in df.columns:
+        df["totalTime"] = df["minutes"].clip(5, 300)  # Limit between 5 and 300 minutes
 
-        if "totalTime" not in df.columns and "minutes" in df.columns:
-            df["totalTime"] = df["minutes"].clip(5, 300)  # Limit between 5 and 300 minutes
+    # Create alias for compatibility
+    if "isVegetarian" not in df.columns:
+        if "is_vegetarian" in df.columns:
+            df["isVegetarian"] = df["is_vegetarian"]
+        else:
+            df["isVegetarian"] = False
 
-        # Create alias for compatibility
-        if "isVegetarian" not in df.columns:
-            if "is_vegetarian" in df.columns:
-                df["isVegetarian"] = df["is_vegetarian"]
-            else:
-                df["isVegetarian"] = False
-
-        # Note: nutrition_score, nutrition_grade, nutrition array, and calories
-        # are already computed in preprocessing - no need to calculate here
-        # Average rating can be added as a separate function when needed
-
-    else:
-        # Fallback: load from PP_recipes and RAW_recipes
-        df = read_pp_recipes(data_dir=data_dir, nrows=10000)
-        raw_df = read_raw_recipes(data_dir=data_dir)
-        raw_df = raw_df[["id", "name", "ingredients", "steps"]]
-        df = df.merge(raw_df, on="id", how="left")
-
-        df["name_tokens"] = df["name_tokens"].apply(eval)
-        df["ingredient_tokens"] = df["ingredient_tokens"].apply(eval)
-        df["steps_tokens"] = df["steps_tokens"].apply(eval)
-        df["techniques"] = df["techniques"].apply(eval)
-        df["ingredient_ids"] = df["ingredient_ids"].apply(eval)
-
-        df["ingredientCount"] = df["ingredient_tokens"].apply(len)
-        df["stepsCount"] = df["steps_tokens"].apply(len)
-
-        calorie_mapping = {0: 200, 1: 400, 2: 600, 3: 800}
-        df["calories"] = df["calorie_level"].map(calorie_mapping)
-        df["totalTime"] = df["stepsCount"] * 5 + df["techniques"].apply(lambda x: sum(x)) * 2
-        df["totalTime"] = df["totalTime"].clip(5, 180)
-
-        if "nutrition_score" not in df.columns:
-            df["nutrition_score"] = np.nan
-        if "nutrition_grade" not in df.columns:
-            df["nutrition_grade"] = None
-        if "is_vegetarian" not in df.columns:
-            df["is_vegetarian"] = df["ingredient_ids"].apply(lambda ids: all(id not in [389, 7655] for id in ids))
-
-        df["isVegetarian"] = df.get("is_vegetarian", False)
+    # Note: nutrition_score, nutrition_grade, nutrition array, and calories
+    # are already computed in preprocessing - no need to calculate here
+    # Average rating can be added as a separate function when needed
 
     return df
 
