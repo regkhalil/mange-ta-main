@@ -273,25 +273,6 @@ def read_raw_interactions(data_dir: Optional[str] = None, usecols: Optional[List
     return read_csv_file("RAW_interactions.csv", data_dir=data_dir, usecols=usecols, dtype=dtype_dict)
 
 
-@st.cache_data(hash_funcs={list: lambda x: str(x)})
-def read_interactions_split(split: str = "train", data_dir: Optional[str] = None) -> pd.DataFrame:
-    """
-    Loads a split interactions file (train/validation/test).
-
-    Args:
-        split: Type of split ("train", "validation", or "test")
-        data_dir: Directory containing the data
-
-    Returns:
-        pd.DataFrame: Interactions from the specified split
-    """
-    valid_splits = ["train", "validation", "test"]
-    if split not in valid_splits:
-        raise ValueError(f"split must be in {valid_splits}, got: {split}")
-
-    return read_csv_file(f"interactions_{split}.csv", data_dir=data_dir)
-
-
 # ============================================================================
 # EXISTING FUNCTIONS (UPDATED TO USE THE NEW CENTRALIZED FUNCTIONS)
 # ============================================================================
@@ -323,23 +304,6 @@ def load_recipes(data_dir: str = None) -> pd.DataFrame:
     # are already computed in preprocessing - no need to calculate here
     # Average rating can be added as a separate function when needed
 
-    return df
-
-
-@st.cache_data(hash_funcs={list: lambda x: str(x)})
-def load_interactions(data_dir: str = None, split: str = "train") -> pd.DataFrame:
-    """
-    Loads user-recipe interactions.
-
-    Args:
-        data_dir: Directory containing the data
-        split: 'train', 'validation', or 'test'
-
-    Returns:
-        DataFrame of interactions
-    """
-    # Use centralized function
-    df = read_interactions_split(split=split, data_dir=data_dir)
     return df
 
 

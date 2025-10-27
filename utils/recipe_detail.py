@@ -303,7 +303,7 @@ def render_recipe_detail(recipes_df: pd.DataFrame, recommender, recipe_id: int, 
     st.markdown("<div id='nutrition-analysis'></div>", unsafe_allow_html=True)
     st.markdown("### 📊 Analyse Nutritionnelle")
 
-    # Load nutrition data from the recipe (already in preprocessed_recipes.csv)
+    # Load nutrition data from the recipe
     try:
         nutrition_data = target_recipe.get("nutrition")
 

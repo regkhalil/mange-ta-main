@@ -19,10 +19,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 os.environ["STREAMLIT_SERVER_ENABLE_STATIC_SERVING"] = "false"
 
 from services.data_loader import (
-    load_interactions,
     load_recipes,
     read_csv_file,
-    read_interactions_split,
     read_raw_interactions,
 )
 
@@ -38,12 +36,6 @@ def data_dir():
 def recipes_df(data_dir):
     """Fixture providing loaded recipes DataFrame."""
     return load_recipes(data_dir=data_dir)
-
-
-@pytest.fixture
-def interactions_df(data_dir):
-    """Fixture providing loaded interactions DataFrame."""
-    return load_interactions(data_dir=data_dir, split="train")
 
 
 # ============================================================================
@@ -81,18 +73,6 @@ class TestCentralizedCSVFunctions:
         assert "recipe_id" in df.columns
         assert "rating" in df.columns
 
-    @pytest.mark.parametrize("split", ["train", "validation", "test"])
-    def test_read_interactions_split(self, data_dir, split):
-        """Test loading split interaction files."""
-        df = read_interactions_split(split=split, data_dir=data_dir)
-        assert isinstance(df, pd.DataFrame)
-        assert len(df) > 0
-
-    def test_read_interactions_split_invalid(self, data_dir):
-        """Test that ValueError is raised for invalid split."""
-        with pytest.raises(ValueError, match="split must be in"):
-            read_interactions_split(split="invalid", data_dir=data_dir)
-
 
 # ============================================================================
 # Tests for high-level loading functions
@@ -123,18 +103,6 @@ class TestLoadingFunctions:
     def test_load_recipes_has_nutrition_grade(self, recipes_df):
         """Test that recipes have nutrition grade."""
         assert "nutrition_grade" in recipes_df.columns
-
-    def test_load_interactions(self, interactions_df):
-        """Test interactions loading."""
-        assert isinstance(interactions_df, pd.DataFrame)
-        assert len(interactions_df) > 0
-
-    @pytest.mark.parametrize("split", ["train", "validation", "test"])
-    def test_load_interactions_all_splits(self, data_dir, split):
-        """Test loading interactions for all splits."""
-        df = load_interactions(data_dir=data_dir, split=split)
-        assert isinstance(df, pd.DataFrame)
-        assert len(df) > 0
 
 
 # ============================================================================
