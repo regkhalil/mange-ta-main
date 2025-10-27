@@ -272,6 +272,7 @@ def render_recipe_card(recipe: pd.Series, recipe_id: int) -> None:
         display_name = recipe_name if len(recipe_name) <= 60 else recipe_name[:57] + "..."
 
         nutri_grade = recipe.get("nutrition_grade", "C")
+        nutri_score = float(recipe.get("nutrition_score", 50))
         nutri_color = NUTRISCORE_COLORS.get(nutri_grade, "#7f8c8d")
 
         is_veg = recipe.get("isVegetarian", False) or recipe.get("is_vegetarian", False)
@@ -360,16 +361,16 @@ def render_recipe_card(recipe: pd.Series, recipe_id: int) -> None:
                 justify-content: center;
                 flex-shrink: 0;
             ">
-                <div style="
+                <div title="Score: {nutri_score:.2f}" style="
                     position: absolute;
                     top: 12px;
                     right: 12px;
                     background-color: {nutri_color};
-                    color: white;
+                    color: #1a1a1a;
                     font-weight: bold;
-                    font-size: 14px;
-                    padding: 4px 12px;
-                    border-radius: 6px;
+                    font-size: 16px;
+                    padding: 3px 10px;
+                    border-radius: 4px;
                     box-shadow: 0 2px 4px rgba(0,0,0,0.2);
                 ">{nutri_grade}</div>
                 <div style="color: rgba(255,255,255,0.5); font-size: 3rem;"
@@ -379,11 +380,9 @@ def render_recipe_card(recipe: pd.Series, recipe_id: int) -> None:
                         height: 220px; flex-shrink: 0; display: flex; flex-direction: column;">
                 <div style="margin-bottom: 0.7rem; min-height: 28px;">{tags_html}</div>
                 <h3 style="margin: 0 0 0.5rem 0; font-size: 1.25rem; color: white;
-                           font-weight: 700; line-height: 1.3; height: 3.5rem;
-                           overflow: hidden; text-overflow: ellipsis; display: -webkit-box;
-                           -webkit-line-clamp: 2; -webkit-box-orient: vertical;">{display_name}</h3>
+                           font-weight: 700; line-height: 1.3; flex-shrink: 0;">{display_name}</h3>
                 <p style="margin: 0; font-size: 0.85rem; color: #b0b0b0;
-                          line-height: 1.4; flex-grow: 1; overflow: hidden;">{description}</p>
+                          line-height: 1.4; overflow: hidden;">{description}</p>
                 {rating_display}
             </div>
         </div>

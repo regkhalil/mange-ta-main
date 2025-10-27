@@ -322,15 +322,8 @@ def load_recipes(data_dir: str = None) -> pd.DataFrame:
 
     if preprocessed_path.exists():
         # Load enriched preprocessed data (uses read_preprocessed_recipes)
+        # Note: This already includes description, nutrition, tags, etc. from preprocessing
         df = read_preprocessed_recipes(data_dir=data_dir)
-
-        # Merge with RAW_recipes to get description
-        try:
-            if (data_dir_path / "RAW_recipes.csv").exists():
-                raw_df = read_raw_recipes(data_dir=data_dir, usecols=["id", "description"])
-                df = df.merge(raw_df, on="id", how="left")
-        except Exception as e:
-            print(f"Unable to load descriptions: {e}")
 
         # Create derived columns for UI (if they don't exist)
         if "ingredientCount" not in df.columns and "n_ingredients" in df.columns:
@@ -342,13 +335,6 @@ def load_recipes(data_dir: str = None) -> pd.DataFrame:
         if "totalTime" not in df.columns and "minutes" in df.columns:
             df["totalTime"] = df["minutes"].clip(5, 300)  # Limit between 5 and 300 minutes
 
-        # Estimate calories from number of steps
-        if "calories" not in df.columns:
-            if "n_steps" in df.columns:
-                df["calories"] = (df["n_steps"] * 10 + 100).clip(50, 800)
-            else:
-                df["calories"] = 300  # Default value
-
         # Create alias for compatibility
         if "isVegetarian" not in df.columns:
             if "is_vegetarian" in df.columns:
@@ -356,48 +342,9 @@ def load_recipes(data_dir: str = None) -> pd.DataFrame:
             else:
                 df["isVegetarian"] = False
 
-        # Create Nutri-Score grade if nutrition_score exists
-        if "nutrition_grade" not in df.columns and "nutrition_score" in df.columns:
-            # Convert score to grade (A-E)
-            def score_to_grade(score):
-                if pd.isna(score):
-                    return "C"  # Default
-                score = float(score)
-                if score <= 40:
-                    return "A"
-                elif score <= 55:
-                    return "B"
-                elif score <= 70:
-                    return "C"
-                elif score <= 80:
-                    return "D"
-                else:
-                    return "E"
-
-            df["nutrition_grade"] = df["nutrition_score"].apply(score_to_grade)
-        elif "nutrition_grade" not in df.columns:
-            df["nutrition_grade"] = "C"  # Default grade
-
-        # Add average rating of recipes from interactions (OPTIMIZED)
-        if "average_rating" not in df.columns:
-            try:
-                # Load interactions to calculate average rating
-                interactions_path = data_dir_path / "RAW_interactions.csv"
-                if interactions_path.exists():
-                    # Use centralized function
-                    interactions = read_raw_interactions(data_dir=data_dir, usecols=["recipe_id", "rating"])
-                    # Calculate average per recipe
-                    avg_ratings = interactions.groupby("recipe_id", as_index=False)["rating"].mean()
-                    avg_ratings.columns = ["id", "average_rating"]
-                    # Merge with recipes
-                    df = df.merge(avg_ratings, on="id", how="left")
-                    # Fill missing values with 4.0
-                    df["average_rating"] = df["average_rating"].fillna(4.0)
-                else:
-                    df["average_rating"] = 4.0
-            except Exception as e:
-                print(f"Error loading ratings: {e}")
-                df["average_rating"] = 4.0
+        # Note: nutrition_score, nutrition_grade, nutrition array, and calories
+        # are already computed in preprocessing - no need to calculate here
+        # Average rating can be added as a separate function when needed
 
     else:
         # Fallback: load from PP_recipes and RAW_recipes
