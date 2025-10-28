@@ -1,40 +1,30 @@
-"""Application Streamlit de recherche et analyse de recettes."""
-
 import ast
 import logging
-import os
-from datetime import datetime
+import sys
+from pathlib import Path
 
 import pandas as pd
 import plotly.express as px
 import streamlit as st
 
+sys.path.append(str(Path(__file__).parent.parent))
+
 from components.filters_panel import render_filters_panel
 from services.data_loader import filter_recipes, load_recipes
+from services.pexels_image_service import get_image_from_pexels
 from services.recommender import get_recommender
 from utils.navigation import navigate_to_recipe
 
 # Configuration
-# Create logs directory if it doesn't exist
-os.makedirs("logs", exist_ok=True)
-
-# Create log filename with timestamp for this session
-timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-log_filename = f"logs/app_{timestamp}.log"
-
-# Configure logging with both file and console handlers
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     handlers=[
-        logging.FileHandler(log_filename),
-        logging.StreamHandler(),  # Log to console
+        logging.FileHandler("logs/app.log"),
+        logging.FileHandler("logs/errors.log", mode="a"),
     ],
 )
 logger = logging.getLogger(__name__)
-
-logger.info(f"Application started. Logging to {log_filename}")
-logger.info(f"Environment: {os.getenv('STREAMLIT_ENV', 'dev')}")
 
 # Constantes
 ITEMS_PER_PAGE = 12
@@ -284,12 +274,14 @@ def render_recipe_card(recipe: pd.Series, recipe_id: int) -> None:
         recipe_name = recipe.get("name", f"Recette #{int(recipe.get('id', 0))}")
         display_name = recipe_name if len(recipe_name) <= 60 else recipe_name[:57] + "..."
 
+        # Récupérer l'image via l'API Pexels
+        image_url = get_image_from_pexels(recipe_name)
+
         nutri_grade = recipe.get("nutrition_grade", "C")
-        nutri_score = float(recipe.get("nutrition_score", 50))
         nutri_color = NUTRISCORE_COLORS.get(nutri_grade, "#7f8c8d")
 
-        is_veg = recipe.get("is_vegetarian", False)
-        prep_time = int(recipe.get("minutes", 30))
+        is_veg = recipe.get("isVegetarian", False) or recipe.get("is_vegetarian", False)
+        prep_time = int(recipe.get("totalTime", recipe.get("minutes", 30)))
         n_ingredients = int(recipe.get("n_ingredients", 0))
 
         tags = []
@@ -338,28 +330,19 @@ def render_recipe_card(recipe: pd.Series, recipe_id: int) -> None:
                         first_step = str(steps_list[0])[:80]
                         description = first_step + ("..." if len(first_step) == 80 else "")
             except (ValueError, SyntaxError) as e:
-                logger.warning(f"Error parsing steps for recipe {recipe_id}: {e}")
+                logger.warning(f"Erreur parsing steps recette {recipe_id}: {e}")
 
-        # Rating avec nombre d'avis
+        # Rating
         rating = float(recipe.get("average_rating", 4.0))
-        review_count = int(recipe.get("review_count", 0))
         full_stars = int(rating)
         half_star = (rating - full_stars) >= 0.5
         empty_stars = 5 - full_stars - int(half_star)
 
         stars_html = "⭐" * full_stars + ("✨" if half_star else "") + "☆" * empty_stars
-
-        # Affichage avec nombre d'avis si disponible
-        if review_count > 0:
-            rating_display = (  # noqa: E501
-                f'<div style="margin-top: 0.5rem; font-size: 0.9rem; color: #ffc107;">'
-                f'{stars_html} <span style="color: #e0e0e0;">{rating:.1f}/5 ({review_count} avis)</span></div>'
-            )
-        else:
-            rating_display = (  # noqa: E501
-                f'<div style="margin-top: 0.5rem; font-size: 0.9rem; color: #ffc107;">'
-                f'{stars_html} <span style="color: #e0e0e0;">{rating:.1f}/5</span></div>'
-            )
+        rating_display = (  # noqa: E501
+            f'<div style="margin-top: 0.5rem; font-size: 0.9rem; color: #ffc107;">'
+            f'{stars_html} <span style="color: #e0e0e0;">{rating:.1f}/5</span></div>'
+        )
 
         # Carte HTML
         card_html = f"""
@@ -382,29 +365,32 @@ def render_recipe_card(recipe: pd.Series, recipe_id: int) -> None:
                 align-items: center;
                 justify-content: center;
                 flex-shrink: 0;
+                overflow: hidden;
             ">
-                <div title="Score: {nutri_score:.2f}" style="
+                <div style="
                     position: absolute;
                     top: 12px;
                     right: 12px;
                     background-color: {nutri_color};
-                    color: #1a1a1a;
+                    color: white;
                     font-weight: bold;
-                    font-size: 16px;
-                    padding: 3px 10px;
-                    border-radius: 4px;
+                    font-size: 14px;
+                    padding: 4px 12px;
+                    border-radius: 6px;
                     box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+                    z-index: 10;
                 ">{nutri_grade}</div>
-                <div style="color: rgba(255,255,255,0.5); font-size: 3rem;"
-                     title="Image à venir" aria-label="Placeholder">🍽️</div>
+                {f'<img src="{image_url}" style="width: 100%; height: 100%; object-fit: cover;" alt="{recipe_name}" />' if image_url else '<div style="color: rgba(255,255,255,0.5); font-size: 3rem;">🍽️</div>'}
             </div>
             <div style="background: #2c2c2c; padding: 1rem; color: white;
                         height: 220px; flex-shrink: 0; display: flex; flex-direction: column;">
                 <div style="margin-bottom: 0.7rem; min-height: 28px;">{tags_html}</div>
                 <h3 style="margin: 0 0 0.5rem 0; font-size: 1.25rem; color: white;
-                           font-weight: 700; line-height: 1.3; flex-shrink: 0;">{display_name}</h3>
+                           font-weight: 700; line-height: 1.3; height: 3.5rem;
+                           overflow: hidden; text-overflow: ellipsis; display: -webkit-box;
+                           -webkit-line-clamp: 2; -webkit-box-orient: vertical;">{display_name}</h3>
                 <p style="margin: 0; font-size: 0.85rem; color: #b0b0b0;
-                          line-height: 1.4; overflow: hidden;">{description}</p>
+                          line-height: 1.4; flex-grow: 1; overflow: hidden;">{description}</p>
                 {rating_display}
             </div>
         </div>
@@ -413,21 +399,247 @@ def render_recipe_card(recipe: pd.Series, recipe_id: int) -> None:
         st.markdown(card_html, unsafe_allow_html=True)
 
     except Exception as e:
-        logger.error(f"Error rendering recipe card for recipe {recipe_id}: {e}")
-        st.error(f"Unable to display recipe #{recipe_id}")
+        logger.error(f"Erreur lors du rendu de la carte recette {recipe_id}: {e}")
+        st.error(f"Impossible d'afficher la recette #{recipe_id}")
+
+
+def render_recipe_card_horizontal(recipe: pd.Series, recipe_id: int) -> None:
+    """Génère et affiche une carte de recette horizontale de type article."""
+    try:
+        recipe_name = recipe.get("name", f"Recette #{int(recipe.get('id', 0))}")
+        display_name = recipe_name if len(recipe_name) <= 45 else recipe_name[:42] + "..."
+
+        # Récupérer l'image via l'API Pexels
+        image_url = get_image_from_pexels(recipe_name)
+
+        # Déterminer la catégorie et les tags
+        is_veg = recipe.get("isVegetarian", False) or recipe.get("is_vegetarian", False)
+        prep_time = int(recipe.get("totalTime", recipe.get("minutes", 30)))
+        n_ingredients = int(recipe.get("n_ingredients", 0))
+
+        # Créer les badges/tags (TOUJOURS afficher tous les tags essentiels)
+        tags = []
+
+        # Tag temps de préparation
+        if prep_time >= 120:
+            tags.append((f"🍲 Longue ({prep_time} min)", "#d9534f"))
+        elif prep_time <= 30:
+            tags.append((f"⚡ Rapide ({prep_time} min)", "#007bff"))
+        elif prep_time <= 60:
+            tags.append((f"⏱️ Moyen ({prep_time} min)", "#ffc107"))
+        else:
+            tags.append((f"⏱️ {prep_time} min", "#ff6347"))
+
+        # Tag nombre d'ingrédients
+        if n_ingredients > 0:
+            if n_ingredients <= 5:
+                tags.append((f"🥗 Simple ({n_ingredients} ingr.)", "#17a2b8"))
+            elif n_ingredients <= 10:
+                tags.append((f"🥘 Modéré ({n_ingredients} ingr.)", "#6c757d"))
+            else:
+                tags.append((f"👨‍🍳 Élaboré ({n_ingredients} ingr.)", "#6f42c1"))
+
+        # Tag calories (TOUJOURS affiché, même si 0)
+        calories = int(recipe.get("calories", 0))
+        tags.append((str(calories) + " kcal", "#E74C3C"))
+
+        # Tag végétarien (affiché seulement si vrai)
+        if is_veg:
+            tags.append(("🌱 Végétarien", "#2ECC71"))
+
+        # Tag Nutri-Score (TOUJOURS affiché)
+        nutri_grade = recipe.get("nutrition_grade", "C")
+        nutri_color = NUTRISCORE_COLORS.get(nutri_grade, "#7f8c8d")
+        tags.append(("Nutri-Score " + nutri_grade, nutri_color))
+
+        tags_html = " ".join(
+            [
+                f'<span style="background-color: {color}; color: white; padding: 3px 8px; '
+                f"border-radius: 12px; font-size: 0.65rem; margin-right: 5px; margin-bottom: 3px; "
+                f'display: inline-block; font-weight: 600;">{tag}</span>'
+                for tag, color in tags
+            ]
+        )
+
+        # Description (extrait de 60-80 caractères pour 3 colonnes)
+        description = ""
+        if "description" in recipe and pd.notna(recipe["description"]):
+            desc_text = str(recipe["description"]).strip()
+            description = desc_text[:65] + ("..." if len(desc_text) > 65 else "")
+        elif "steps" in recipe and recipe["steps"]:
+            try:
+                steps_text = recipe["steps"]
+                if isinstance(steps_text, str) and steps_text.startswith("["):
+                    steps_list = ast.literal_eval(steps_text)
+                    if steps_list:
+                        first_step = str(steps_list[0])[:65]
+                        description = first_step + ("..." if len(first_step) == 65 else "")
+            except (ValueError, SyntaxError) as e:
+                logger.warning(f"Erreur parsing steps recette {recipe_id}: {e}")
+
+        if not description:
+            description = f"Recette {prep_time} min • {n_ingredients} ingr."
+
+        # Rating
+        rating = float(recipe.get("average_rating", 4.0))
+        full_stars = int(rating)
+        half_star = (rating - full_stars) >= 0.5
+        empty_stars = 5 - full_stars - int(half_star)
+        stars_html = "⭐" * full_stars + ("✨" if half_star else "") + "☆" * empty_stars
+
+        # Carte verticale HTML
+        card_html = f"""
+        <style>
+        .recipe-row-compact {{
+            display: flex;
+            flex-direction: column;
+            background: #1f1f1f;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            margin-bottom: 1.2rem;
+            transition: all 0.3s ease;
+            height: 100%;
+        }}
+        .recipe-row-compact:hover {{
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.4);
+        }}
+        .recipe-img-compact {{
+            width: 100%;
+            height: 180px;
+            position: relative;
+            overflow: hidden;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            flex-shrink: 0;
+        }}
+        .recipe-img-compact img {{
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }}
+        .recipe-content-compact {{
+            flex: 1;
+            padding: 0.9rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            min-width: 0;
+        }}
+        .recipe-tags-compact {{
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.3rem;
+            margin-bottom: 0.6rem;
+        }}
+        .recipe-title-compact {{
+            color: #ffffff;
+            font-size: 1rem;
+            font-weight: 700;
+            line-height: 1.3;
+            margin: 0 0 0.4rem 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            min-height: 2.6rem;
+        }}
+        .recipe-excerpt-compact {{
+            color: #b0b0b0;
+            font-size: 0.75rem;
+            line-height: 1.4;
+            margin-bottom: 0.6rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+        }}
+        .recipe-meta-compact {{
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.4rem;
+            color: #888;
+            font-size: 0.7rem;
+            padding-top: 0.5rem;
+            border-top: 1px solid #2b2b2b;
+        }}
+        .recipe-meta-item-compact {{
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }}
+        .rating-stars-compact {{
+            color: #ffc107;
+            font-size: 0.75rem;
+            margin-left: auto;
+        }}
+        @media (max-width: 768px) {{
+            .recipe-row-compact {{
+                height: auto;
+            }}
+            .recipe-img-compact {{
+                height: 160px;
+            }}
+        }}
+        </style>
+        
+        <div class="recipe-row-compact">
+            <div class="recipe-img-compact">
+                <div style="
+                    position: absolute;
+                    top: 12px;
+                    right: 12px;
+                    background-color: {nutri_color};
+                    color: white;
+                    font-weight: bold;
+                    font-size: 14px;
+                    padding: 4px 12px;
+                    border-radius: 6px;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+                    z-index: 10;
+                ">{nutri_grade}</div>
+                {f'<img src="{image_url}" alt="{recipe_name}" />' if image_url else '<div style="display: flex; align-items: center; justify-content: center; height: 100%; color: rgba(255,255,255,0.5); font-size: 2.5rem;">🍽️</div>'}
+            </div>
+            <div class="recipe-content-compact">
+                <div>
+                    <div class="recipe-tags-compact">{tags_html}</div>
+                    <h3 class="recipe-title-compact">{display_name}</h3>
+                    <p class="recipe-excerpt-compact">{description}</p>
+                </div>
+                <div class="recipe-meta-compact">
+                    <div class="rating-stars-compact" style="margin-left: 0;">
+                        {stars_html} <span style="color: #e0e0e0; margin-left: 0.15rem;">{rating:.1f}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        """
+
+        st.markdown(card_html, unsafe_allow_html=True)
+
+    except Exception as e:
+        logger.error(f"Erreur lors du rendu de la carte horizontale recette {recipe_id}: {e}")
+        st.error(f"Impossible d'afficher la recette #{recipe_id}")
 
 
 def page_recherche(recipes_df: pd.DataFrame, recommender) -> None:
     """Page de recherche avec filtres et pagination."""
+    # Initialiser la pagination si nécessaire
+    if "current_page" not in st.session_state:
+        st.session_state.current_page = 1
+
     header_html = (
         "<div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); "
         "padding: 3rem 2rem; border-radius: 15px; margin-bottom: 2rem; text-align: center; "
         "color: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1);'>"
         "<h1 style='font-size: 2.5rem; margin-bottom: 0.5rem; font-weight: 700;'>"
-        "🍽️ Des recettes et des actus culinaires"
+        "🍽️ Découvrez nos meilleures recettes "
         "</h1>"
         "<p style='font-size: 1.2rem; margin: 0; opacity: 0.95;'>"
-        "Plus de 90 000 recettes faciles et rapides pour vous inspirer en cuisine."
+        "Plus de 200 000 recettes pour vous inspirer en cuisine."
         "</p>"
         "</div>"
     )
@@ -444,6 +656,7 @@ def page_recherche(recipes_df: pd.DataFrame, recommender) -> None:
             key="search_input",
         )
     with col_button:
+        st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
         if st.button("🔍 Rechercher", type="primary"):
             st.session_state.current_page = 1  # Reset pagination
 
@@ -451,13 +664,10 @@ def page_recherche(recipes_df: pd.DataFrame, recommender) -> None:
     if "show_filters" not in st.session_state:
         st.session_state.show_filters = False
 
-    if st.button(
-        "🎯 Filtres avancés" if not st.session_state.show_filters else "✖️ Masquer les filtres",
-        use_container_width=False,
-    ):
+    if st.button("🎯 Filtres avancés", type="primary", use_container_width=False):
         st.session_state.show_filters = not st.session_state.show_filters
 
-    # Afficher les filtres si le bouton est activé
+    # Afficher les filtres si activés
     if st.session_state.show_filters:
         filters = render_filters_panel(in_sidebar=False)
     else:
@@ -550,7 +760,7 @@ def _apply_keyword_search(df: pd.DataFrame, search_query: str) -> pd.DataFrame:
 
 
 def _display_recipes_grid(filtered_recipes: pd.DataFrame, total_results: int) -> None:
-    """Affiche grille de recettes avec pagination."""
+    """Affiche grille de recettes horizontales avec pagination (3 par ligne)."""
     if "current_page" not in st.session_state:
         st.session_state.current_page = 1
 
@@ -559,19 +769,23 @@ def _display_recipes_grid(filtered_recipes: pd.DataFrame, total_results: int) ->
 
     display_recipes = filtered_recipes.iloc[start_idx:end_idx]
 
-    n_cols = 2
+    # Affichage en grille : 3 colonnes par ligne avec espacement sur les côtés
+    n_cols = 3
     for i in range(0, len(display_recipes), n_cols):
-        cols = st.columns(n_cols)
-        for j, col in enumerate(cols):
+        # Créer des colonnes avec espacement sur les extrémités
+        cols = st.columns([0.5, 2, 2, 2, 0.5])
+
+        for j in range(n_cols):
             idx = i + j
             if idx < len(display_recipes):
                 recipe = display_recipes.iloc[idx]
                 recipe_id = int(recipe["id"])
-                with col:
-                    render_recipe_card(recipe, recipe_id)
+                # Utiliser les colonnes 1, 2, 3 (en sautant 0 et 4 pour l'espacement)
+                with cols[j + 1]:
+                    render_recipe_card_horizontal(recipe, recipe_id)
 
                     if st.button(
-                        "📖 Voir la recette",
+                        "📖 Voir la recette complète",
                         key=f"view_{recipe_id}",
                         use_container_width=True,
                         type="primary",
@@ -654,13 +868,11 @@ def _render_distributions(recipes_df: pd.DataFrame) -> None:
             fig.update_layout(template="plotly_dark", showlegend=False, height=400)
             st.plotly_chart(fig, use_container_width=True)
 
-
-
     # Troisième graphique: Distribution des scores nutritionnels
     if "nutrition_score" in recipes_df.columns:
         st.markdown("---")
         valid_scores = recipes_df["nutrition_score"].dropna()
-        
+
         if len(valid_scores) > 0:
             fig = px.histogram(
                 recipes_df,
@@ -670,19 +882,21 @@ def _render_distributions(recipes_df: pd.DataFrame) -> None:
                 labels={"nutrition_score": "Score nutritionnel", "count": "Nombre de recettes"},
                 color_discrete_sequence=["#f093fb"],
             )
-            
+
             # Ajouter lignes de moyenne et médiane
             mean_score = valid_scores.mean()
             median_score = valid_scores.median()
-            
-            fig.add_vline(x=mean_score, line_dash="dash", line_color="yellow", 
-                         annotation_text=f"Moyenne: {mean_score:.1f}")
-            fig.add_vline(x=median_score, line_dash="dot", line_color="orange", 
-                         annotation_text=f"Médiane: {median_score:.1f}")
-            
+
+            fig.add_vline(
+                x=mean_score, line_dash="dash", line_color="yellow", annotation_text=f"Moyenne: {mean_score:.1f}"
+            )
+            fig.add_vline(
+                x=median_score, line_dash="dot", line_color="orange", annotation_text=f"Médiane: {median_score:.1f}"
+            )
+
             fig.update_layout(template="plotly_dark", showlegend=False, height=400)
             st.plotly_chart(fig, use_container_width=True)
-            
+
             # Statistiques complémentaires
             col1, col2, col3, col4 = st.columns(4)
             with col1:
@@ -695,6 +909,7 @@ def _render_distributions(recipes_df: pd.DataFrame) -> None:
                 st.metric("📈 Écart-type", f"{valid_scores.std():.1f}")
         else:
             st.warning("⚠️ Aucune donnée de score nutritionnel disponible")
+
 
 def _render_scatter_plot(recipes_df: pd.DataFrame) -> None:
     """Affiche scatter plot de relations."""
@@ -754,13 +969,13 @@ def _render_stats_table(recipes_df: pd.DataFrame) -> None:
 
 @st.cache_resource
 def initialize_app() -> tuple[pd.DataFrame, object]:
-    """Load data and initialize recommender."""
-    logger.info("Initialization - Loading data")
+    """Charge donnees et initialise le recommendeur."""
+    logger.info("Initialisation - Chargement des donnees")
     recipes_df = load_recipes()
-    logger.info(f"Recipes loaded: {len(recipes_df)}")
+    logger.info(f"Recettes chargees: {len(recipes_df)}")
 
     recommender = get_recommender(recipes_df)
-    logger.info("Recommendation system initialized")
+    logger.info("Systeme de recommandation initialise")
 
     return recipes_df, recommender
 
