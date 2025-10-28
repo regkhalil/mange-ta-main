@@ -20,7 +20,7 @@ from utils.navigation import navigate_to_recipe
 try:
     LOGS_DIR = Path(__file__).parent / "logs"
     LOGS_DIR.mkdir(exist_ok=True)
-    
+
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -40,7 +40,7 @@ except (OSError, PermissionError):
 logger = logging.getLogger(__name__)
 
 # Constantes
-ITEMS_PER_PAGE = 12
+ITEMS_PER_PAGE = 6  # Réduit pour de meilleures performances avec les images Pexels
 NUTRISCORE_COLORS = {
     "A": "#238B45",
     "B": "#85BB2F",
@@ -673,25 +673,9 @@ def page_recherche(recipes_df: pd.DataFrame, recommender) -> None:
         if st.button("🔍 Rechercher", type="primary"):
             st.session_state.current_page = 1  # Reset pagination
 
-    # Bouton Filtres avancés
-    if "show_filters" not in st.session_state:
-        st.session_state.show_filters = False
-
-    if st.button("🎯 Filtres avancés", type="primary", use_container_width=False):
-        st.session_state.show_filters = not st.session_state.show_filters
-
-    # Afficher les filtres si activés
-    if st.session_state.show_filters:
+    # Filtres avancés avec expander (affichage instantané sans rerun)
+    with st.expander("🎯 Filtres avancés"):
         filters = render_filters_panel(in_sidebar=False)
-    else:
-        # Filtres par défaut quand fermés
-        filters = {
-            "prep": [0, 300],
-            "ingredients": [1, 45],
-            "calories": [0, 2000],
-            "vegetarian_only": False,
-            "nutrition_grades": [],
-        }
 
     # Réinitialiser la pagination si les filtres changent
     if "last_filters" not in st.session_state:
