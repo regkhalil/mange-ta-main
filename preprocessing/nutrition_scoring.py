@@ -399,6 +399,19 @@ def score_nutrition(df: pd.DataFrame, nutrition_col: str = "nutrition") -> pd.Da
     df["nutrition_score"] = normalize_scores(raw_scores)
     df["nutrition_grade"] = df["nutrition_score"].apply(assign_grade)
 
+    # Extract calories column only
+    logger.info("Extracting calories column from nutrition array...")
+
+    def extract_calories(nutrition_value):
+        """Extract calories value from nutrition array."""
+        parsed = parse_nutrition_entry(nutrition_value)
+        if parsed and len(parsed) >= 1:
+            return float(parsed[0])
+        return 0.0
+
+    df["calories"] = df[nutrition_col].apply(extract_calories)
+    logger.info(f"Extracted calories column - Mean: {df['calories'].mean():.1f} kcal")
+
     # Log grade distribution
     grade_counts = df["nutrition_grade"].value_counts().sort_index()
     logger.info(f"Grade distribution: {grade_counts.to_dict()}")
