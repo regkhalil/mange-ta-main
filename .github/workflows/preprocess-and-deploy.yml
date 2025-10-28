@@ -12,6 +12,8 @@ on:
 jobs:
   preprocess-and-deploy:
     runs-on: ubuntu-latest
+    outputs:
+      preprocessing_completed: ${{ steps.set-output.outputs.completed }}
     
     steps:
       - name: Checkout code
@@ -50,3 +52,8 @@ jobs:
           name: preprocessing-logs
           path: logs/
           retention-days: 30
+
+      - name: Set output
+        id: set-output
+        if: success()
+        run: echo "completed=true" >> $GITHUB_OUTPUT
