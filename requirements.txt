@@ -25,16 +25,12 @@ colorama==0.4.6 ; sys_platform == 'win32'
     #   click
     #   pytest
     #   tqdm
-contourpy==1.3.2 ; python_full_version < '3.11'
-    # via matplotlib
-contourpy==1.3.3 ; python_full_version >= '3.11'
+contourpy==1.3.3
     # via matplotlib
 coverage==7.11.0
     # via pytest-cov
 cycler==0.12.1
     # via matplotlib
-exceptiongroup==1.3.0 ; python_full_version < '3.11'
-    # via pytest
 fonttools==4.60.1
     # via matplotlib
 gitdb==4.0.12
@@ -94,16 +90,7 @@ narwhals==2.6.0
     #   plotly
 nltk==3.9.2
     # via mange-ta-main
-numpy==2.2.6 ; python_full_version < '3.11'
-    # via
-    #   contourpy
-    #   matplotlib
-    #   pandas
-    #   pydeck
-    #   scikit-learn
-    #   scipy
-    #   streamlit
-numpy==2.3.3 ; python_full_version >= '3.11'
+numpy==2.3.3
     # via
     #   contourpy
     #   matplotlib
@@ -200,15 +187,13 @@ rsa==4.9.1
     # via google-auth
 scikit-learn==1.7.2
     # via mange-ta-main
-scipy==1.15.3 ; python_full_version < '3.11'
-    # via scikit-learn
-scipy==1.16.2 ; python_full_version >= '3.11'
+scipy==1.16.2
     # via scikit-learn
 six==1.17.0
     # via python-dateutil
 smmap==5.0.2
     # via gitdb
-standard-mailcap==3.13.0 ; python_full_version >= '3.13'
+standard-mailcap==3.13.0
     # via visidata
 streamlit==1.50.0
     # via mange-ta-main
@@ -218,10 +203,6 @@ threadpoolctl==3.6.0
     # via scikit-learn
 toml==0.10.2
     # via streamlit
-tomli==2.3.0 ; python_full_version <= '3.11'
-    # via
-    #   coverage
-    #   pytest
 tornado==6.5.2
     # via streamlit
 tqdm==4.67.1
@@ -231,8 +212,6 @@ tqdm==4.67.1
 typing-extensions==4.15.0
     # via
     #   altair
-    #   exceptiongroup
-    #   referencing
     #   streamlit
 tzdata==2025.2
     # via pandas

@@ -3,6 +3,7 @@
 import ast
 import logging
 import os
+import sys
 from datetime import datetime
 
 import pandas as pd
@@ -35,6 +36,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 logger.info(f"Application started. Logging to {log_filename}")
+logger.info(f"Python version: {sys.version}")
 
 # Get environment from secrets (supports both Streamlit Cloud and Hugging Face)
 app_env = get_secret("STREAMLIT_ENV", "dev")
