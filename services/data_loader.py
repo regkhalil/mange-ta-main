@@ -7,7 +7,7 @@ All loading functions use standardized paths and consistent parameters.
 
 import io
 import logging
-import os
+import sys
 from pathlib import Path
 from typing import List, Optional
 
@@ -17,6 +17,10 @@ from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 
+# Import secrets helper for cross-platform compatibility
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from utils.secrets import get_google_folder_id, get_google_token_json, get_secret
+
 # Setup logger
 logger = logging.getLogger(__name__)
 
@@ -25,30 +29,30 @@ logger = logging.getLogger(__name__)
 # ============================================================================
 
 # Check if running in production mode
-ENV = os.getenv("STREAMLIT_ENV", "dev")
+ENV = get_secret("STREAMLIT_ENV", "dev")
 IS_PRODUCTION = ENV == "prod"
 
 
 def _get_gdrive_service():
     """
     Gets an authenticated Google Drive API service.
-    Uses credentials from Streamlit secrets.
+    Uses credentials from environment variables.
+
+    Only called in production mode.
 
     Returns:
         Google Drive API service or None if authentication fails
     """
     try:
-        import json
+        # Get token from environment variables
+        token_data = get_google_token_json()
 
-        # Get token from Streamlit secrets
-        if "google" not in st.secrets or "token" not in st.secrets["google"]:
-            error_msg = "Google Drive credentials not found in Streamlit secrets."
+        if not token_data:
+            error_msg = "Google Drive credentials not found in environment variables."
             logger.error(error_msg)
             st.error(error_msg)
             return None
 
-        # Parse token from Streamlit secrets
-        token_data = json.loads(st.secrets["google"]["token"])
         creds = Credentials.from_authorized_user_info(token_data)
 
         # Refresh if expired
@@ -93,14 +97,14 @@ def _download_file_from_gdrive(filename: str) -> Optional[bytes]:
         if not service:
             return None
 
-        # Get folder ID from Streamlit secrets
-        if "google" not in st.secrets or "folder_id" not in st.secrets["google"]:
-            error_msg = "Google Drive folder_id not found in Streamlit secrets."
+        # Get folder ID from environment variables
+        folder_id = get_google_folder_id()
+
+        if not folder_id:
+            error_msg = "Google Drive folder_id not found in environment variables."
             logger.error(error_msg)
             st.error(error_msg)
             return None
-
-        folder_id = st.secrets["google"]["folder_id"]
 
         # Search for the file in the folder
         query = f"name='{filename}' and '{folder_id}' in parents and trashed=false"

@@ -496,7 +496,6 @@ def main():
 
     st.markdown("---")
 
-
     # Chart 2: Distribution des scores nutritionnels
     with st.container():
         fig_nutrition = create_nutrition_score_histogram(filtered_df)
@@ -543,40 +542,44 @@ def main():
     st.caption("💡 Données provenant de Kaggle: Food.com Recipes and User Interactions")
 
 
-
 # Function for nutrition score histogram
-
 
 
 def create_nutrition_score_histogram(df: pd.DataFrame) -> go.Figure:
     """Crée un histogramme de la distribution des scores nutritionnels."""
-    if 'nutrition_score' not in df.columns:
+    if "nutrition_score" not in df.columns:
         fig = go.Figure()
-        fig.add_annotation(text="Colonne 'nutrition_score' non trouvée", x=0.5, y=0.5, showarrow=False, font=dict(size=16, color="red"))
+        fig.add_annotation(
+            text="Colonne 'nutrition_score' non trouvée", x=0.5, y=0.5, showarrow=False, font=dict(size=16, color="red")
+        )
         fig.update_layout(title="Distribution des scores nutritionnels - Données manquantes", template="plotly_dark")
         return fig
-    
-    valid_scores = df['nutrition_score'].dropna()
+
+    valid_scores = df["nutrition_score"].dropna()
     if len(valid_scores) == 0:
         fig = go.Figure()
-        fig.add_annotation(text="Aucune donnée disponible", x=0.5, y=0.5, showarrow=False, font=dict(size=16, color="orange"))
+        fig.add_annotation(
+            text="Aucune donnée disponible", x=0.5, y=0.5, showarrow=False, font=dict(size=16, color="orange")
+        )
         fig.update_layout(title="Distribution des scores nutritionnels - Aucune donnée", template="plotly_dark")
         return fig
-    
+
     fig = go.Figure()
     fig.add_trace(go.Histogram(x=valid_scores, nbinsx=30, marker_color="#f093fb", opacity=0.7))
-    
+
     mean_score = valid_scores.mean()
     median_score = valid_scores.median()
-    std_score = valid_scores.std()
-    
+    # std_score = valid_scores.std()
+
     fig.add_vline(x=mean_score, line_dash="dash", line_color="yellow", annotation_text=f"Moyenne: {mean_score:.1f}")
     fig.add_vline(x=median_score, line_dash="dot", line_color="orange", annotation_text=f"Médiane: {median_score:.1f}")
-    
+
     fig.update_layout(
         title=f"Distribution des scores nutritionnels (n={len(valid_scores):,})",
-        xaxis_title="Score nutritionnel", yaxis_title="Nombre de recettes",
-        template="plotly_dark", showlegend=False
+        xaxis_title="Score nutritionnel",
+        yaxis_title="Nombre de recettes",
+        template="plotly_dark",
+        showlegend=False,
     )
     return fig
 

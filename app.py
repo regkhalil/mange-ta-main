@@ -13,6 +13,7 @@ from components.filters_panel import render_filters_panel
 from services.data_loader import filter_recipes, load_recipes
 from services.recommender import get_recommender
 from utils.navigation import navigate_to_recipe
+from utils.secrets import get_secret
 
 # Configuration
 # Create logs directory if it doesn't exist
@@ -34,7 +35,16 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 logger.info(f"Application started. Logging to {log_filename}")
-logger.info(f"Environment: {os.getenv('STREAMLIT_ENV', 'dev')}")
+
+# Get environment from secrets (supports both Streamlit Cloud and Hugging Face)
+app_env = get_secret("STREAMLIT_ENV", "dev")
+logger.info(f"Environment: {app_env}")
+
+# Log Google Drive status
+if app_env.lower() in ("prod", "production"):
+    logger.info("Google Drive integration: ENABLED")
+else:
+    logger.info("Google Drive integration: DISABLED (dev mode)")
 
 # Constantes
 ITEMS_PER_PAGE = 12
@@ -654,13 +664,11 @@ def _render_distributions(recipes_df: pd.DataFrame) -> None:
             fig.update_layout(template="plotly_dark", showlegend=False, height=400)
             st.plotly_chart(fig, use_container_width=True)
 
-
-
     # Troisième graphique: Distribution des scores nutritionnels
     if "nutrition_score" in recipes_df.columns:
         st.markdown("---")
         valid_scores = recipes_df["nutrition_score"].dropna()
-        
+
         if len(valid_scores) > 0:
             fig = px.histogram(
                 recipes_df,
@@ -670,19 +678,21 @@ def _render_distributions(recipes_df: pd.DataFrame) -> None:
                 labels={"nutrition_score": "Score nutritionnel", "count": "Nombre de recettes"},
                 color_discrete_sequence=["#f093fb"],
             )
-            
+
             # Ajouter lignes de moyenne et médiane
             mean_score = valid_scores.mean()
             median_score = valid_scores.median()
-            
-            fig.add_vline(x=mean_score, line_dash="dash", line_color="yellow", 
-                         annotation_text=f"Moyenne: {mean_score:.1f}")
-            fig.add_vline(x=median_score, line_dash="dot", line_color="orange", 
-                         annotation_text=f"Médiane: {median_score:.1f}")
-            
+
+            fig.add_vline(
+                x=mean_score, line_dash="dash", line_color="yellow", annotation_text=f"Moyenne: {mean_score:.1f}"
+            )
+            fig.add_vline(
+                x=median_score, line_dash="dot", line_color="orange", annotation_text=f"Médiane: {median_score:.1f}"
+            )
+
             fig.update_layout(template="plotly_dark", showlegend=False, height=400)
             st.plotly_chart(fig, use_container_width=True)
-            
+
             # Statistiques complémentaires
             col1, col2, col3, col4 = st.columns(4)
             with col1:
@@ -695,6 +705,7 @@ def _render_distributions(recipes_df: pd.DataFrame) -> None:
                 st.metric("📈 Écart-type", f"{valid_scores.std():.1f}")
         else:
             st.warning("⚠️ Aucune donnée de score nutritionnel disponible")
+
 
 def _render_scatter_plot(recipes_df: pd.DataFrame) -> None:
     """Affiche scatter plot de relations."""
