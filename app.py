@@ -348,7 +348,7 @@ def render_recipe_card(recipe: pd.Series, recipe_id: int) -> None:
         empty_stars = 5 - full_stars - int(half_star)
 
         stars_html = "⭐" * full_stars + ("✨" if half_star else "") + "☆" * empty_stars
-        
+
         # Affichage avec nombre d'avis si disponible
         if review_count > 0:
             rating_display = (  # noqa: E501
@@ -495,9 +495,7 @@ def page_recherche(recipes_df: pd.DataFrame, recommender) -> None:
         if "popularity_score" in filtered_recipes.columns:
             # Tri principal par popularity_score, puis par average_rating en cas d'égalité
             filtered_recipes = filtered_recipes.sort_values(
-                ["popularity_score", "average_rating"], 
-                ascending=[False, False], 
-                na_position="last"
+                ["popularity_score", "average_rating"], ascending=[False, False], na_position="last"
             )
         elif "average_rating" in filtered_recipes.columns:
             # Fallback vers average_rating seul si popularity_score n'existe pas

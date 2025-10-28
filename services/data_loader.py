@@ -190,6 +190,9 @@ def read_csv_file(
     Raises:
         FileNotFoundError: If the file does not exist
     """
+
+    logger.info(f"Reading csv file {filename}")
+
     # Merge default parameters with kwargs
     read_params = {"low_memory": False, **kwargs}
 
@@ -282,7 +285,7 @@ def read_raw_interactions(data_dir: Optional[str] = None, usecols: Optional[List
 def load_recipes(data_dir: str = None) -> pd.DataFrame:
     """
     Loads and preprocesses recipe data from preprocessed_recipes.csv
-    
+
     The file now includes popularity statistics (review_count, average_rating, popularity_score)
     calculated from RAW_interactions.csv.
 
@@ -308,7 +311,7 @@ def load_recipes(data_dir: str = None) -> pd.DataFrame:
     # Verify that popularity columns exist
     required_popularity_cols = ["review_count", "average_rating", "popularity_score"]
     missing_cols = [col for col in required_popularity_cols if col not in df.columns]
-    
+
     if missing_cols:
         logger.warning(f"Colonnes de popularité manquantes: {missing_cols}")
         logger.warning("Utilisation de valeurs par défaut pour la popularité")
