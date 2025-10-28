@@ -657,6 +657,47 @@ def _render_distributions(recipes_df: pd.DataFrame) -> None:
             st.plotly_chart(fig, use_container_width=True)
 
 
+
+    # Troisième graphique: Distribution des scores nutritionnels
+    if "nutrition_score" in recipes_df.columns:
+        st.markdown("---")
+        valid_scores = recipes_df["nutrition_score"].dropna()
+        
+        if len(valid_scores) > 0:
+            fig = px.histogram(
+                recipes_df,
+                x="nutrition_score",
+                nbins=30,
+                title="Distribution des scores nutritionnels",
+                labels={"nutrition_score": "Score nutritionnel", "count": "Nombre de recettes"},
+                color_discrete_sequence=["#f093fb"],
+            )
+            
+            # Ajouter lignes de moyenne et médiane
+            mean_score = valid_scores.mean()
+            median_score = valid_scores.median()
+            
+            fig.add_vline(x=mean_score, line_dash="dash", line_color="yellow", 
+                         annotation_text=f"Moyenne: {mean_score:.1f}")
+            fig.add_vline(x=median_score, line_dash="dot", line_color="orange", 
+                         annotation_text=f"Médiane: {median_score:.1f}")
+            
+            fig.update_layout(template="plotly_dark", showlegend=False, height=400)
+            st.plotly_chart(fig, use_container_width=True)
+            
+            # Statistiques complémentaires
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                st.metric("📊 Recettes avec score", f"{len(valid_scores):,}")
+            with col2:
+                st.metric("⭐ Score moyen", f"{mean_score:.1f}")
+            with col3:
+                st.metric("🎯 Score médian", f"{median_score:.1f}")
+            with col4:
+                st.metric("📈 Écart-type", f"{valid_scores.std():.1f}")
+        else:
+            st.warning("⚠️ Aucune donnée de score nutritionnel disponible")
+
 def _render_scatter_plot(recipes_df: pd.DataFrame) -> None:
     """Affiche scatter plot de relations."""
     st.subheader("🔍 Analyses de relations")
