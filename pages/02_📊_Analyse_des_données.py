@@ -416,56 +416,28 @@ def main():
     # Calculer les notes moyennes
     with st.spinner("Calcul des statistiques..."):
         recipes_df = compute_avg_rating(recipes_df, interactions_df)
-        available_tags = parse_tags(recipes_df)
 
-    # Layout: 2 colonnes pour filtres et KPIs
-    col_filters, col_kpis = st.columns([2, 1])
-
-    with col_filters:
-        st.subheader("🎛️ Filtres")
-
-        # Filtres en colonnes
-        fcol1, fcol2, fcol3 = st.columns(3)
-
-        with fcol1:
-            selected_tags = st.multiselect("Tags (top 30)", options=available_tags, default=[], key="tag_filter")
-
-        with fcol2:
-            min_rating = st.slider(
-                "Note minimum", min_value=0.0, max_value=5.0, value=3.0, step=0.5, key="rating_filter"
-            )
-
-        with fcol3:
-            max_minutes = st.slider(
-                "Temps max (min)", min_value=10, max_value=300, value=120, step=10, key="time_filter"
-            )
-
-        # Bouton de réinitialisation
-        if st.button("♻️ Réinitialiser les filtres"):
-            st.session_state.tag_filter = []
-            st.session_state.rating_filter = 3.0
-            st.session_state.time_filter = 120
-            st.rerun()
-
-    # Appliquer les filtres
-    filtered_df = apply_filters(recipes_df, selected_tags, min_rating, max_minutes)
+    # Pas de filtres supplémentaires - utiliser toutes les recettes
+    filtered_df = recipes_df
 
     # KPIs
-    with col_kpis:
+    with st.container():
         st.subheader("📈 Métriques")
 
-        kpi1, kpi2, kpi3 = st.columns(1)
+        kpi1, kpi2, kpi3 = st.columns(3)
 
         with kpi1:
             st.metric("🍽️ Recettes", f"{len(filtered_df):,}")
 
-        if "avg_rating" in filtered_df.columns:
-            avg_rating_val = filtered_df["avg_rating"].mean()
-            st.metric("⭐ Note moyenne", f"{avg_rating_val:.2f}" if not pd.isna(avg_rating_val) else "N/A")
+        with kpi2:
+            if "avg_rating" in filtered_df.columns:
+                avg_rating_val = filtered_df["avg_rating"].mean()
+                st.metric("⭐ Note moyenne", f"{avg_rating_val:.2f}" if not pd.isna(avg_rating_val) else "N/A")
 
-        if "minutes" in filtered_df.columns:
-            median_time = filtered_df["minutes"].median()
-            st.metric("⏱️ Temps médian", f"{median_time:.0f} min" if not pd.isna(median_time) else "N/A")
+        with kpi3:
+            if "minutes" in filtered_df.columns:
+                median_time = filtered_df["minutes"].median()
+                st.metric("⏱️ Temps médian", f"{median_time:.0f} min" if not pd.isna(median_time) else "N/A")
 
     # Message d'information sur le filtrage
     st.info(f"📊 **{len(filtered_df):,} recettes** correspondent à vos critères")
