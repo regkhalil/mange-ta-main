@@ -1,0 +1,65 @@
+name: Sync to Hugging Face hub
+on:
+  push:
+    branches: [main]
+  workflow_run:
+    workflows: ["Preprocess and Deploy to Google Drive"]
+    types:
+      - completed
+
+  # to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  check-preprocessing:
+    runs-on: ubuntu-latest
+    outputs:
+      preprocessing_changed: ${{ steps.check.outputs.changed }}
+      preprocessing_completed: ${{ steps.check.outputs.completed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      
+      - name: Check if preprocessing files changed
+        id: check
+        run: |
+          # Check if this was triggered by workflow_run
+          if [ "${{ github.event_name }}" = "workflow_run" ]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+            if [ "${{ github.event.workflow_run.conclusion }}" = "success" ]; then
+              echo "completed=true" >> $GITHUB_OUTPUT
+            else
+              echo "completed=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            # Check if preprocessing files were changed in this push
+            if git diff --name-only HEAD^ HEAD | grep -q '^preprocessing/'; then
+              echo "changed=true" >> $GITHUB_OUTPUT
+              echo "completed=false" >> $GITHUB_OUTPUT
+            else
+              echo "changed=false" >> $GITHUB_OUTPUT
+              echo "completed=true" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+  sync-to-hub:
+    needs: check-preprocessing
+    # Run if preprocessing didn't change OR if preprocessing completed successfully
+    if: needs.check-preprocessing.outputs.preprocessing_changed == 'false' || needs.check-preprocessing.outputs.preprocessing_completed == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: true
+          ref: main  # Ensure we get the latest main branch
+      
+      - name: Pull latest changes
+        run: |
+          git pull origin main
+          
+      - name: Push to hub
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: git push https://regkhalil:$HF_TOKEN@huggingface.co/spaces/regkhalil/mange-ta-main main

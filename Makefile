@@ -1,6 +1,6 @@
 # Makefile for mange-ta-main project
 
-.PHONY: preprocess clean help install test lint lint-check format format-check fix
+.PHONY: preprocess clean help install test lint lint-check format format-check fix requirements
 
 # Default target
 help:
@@ -8,6 +8,7 @@ help:
 	@echo "  dev           - Install dependencies, prepare the data, and run the application"
 	@echo "  start         - Run the Streamlit app"
 	@echo "  preprocess    - Run the recipe preprocessing pipeline"
+	@echo "  requirements  - Generate requirements.txt from pyproject.toml"
 	@echo "  fix           - Run both linting and formatting (lint + format)"
 	@echo "  lint          - Run ruff linter and fix issues"
 	@echo "  lint-check    - Run ruff linter without fixing (check only)"
@@ -42,6 +43,11 @@ format-check:
 # Install dependencies
 install:
 	uv sync
+
+# Generate requirements.txt from pyproject.toml (for Streamlit Cloud deployment)
+requirements:
+	uv export --no-hashes --no-dev -o requirements.txt
+	@echo "✅ requirements.txt updated from pyproject.toml"
 
 # Clean generated files
 clean:

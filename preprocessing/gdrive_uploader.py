@@ -8,13 +8,18 @@ Authentication Flow:
 1. First run: Interactive login (browser or console) creates token.json
 2. Subsequent runs: Automatic token refresh using token.json
 3. CI/CD: Copy token.json to CI/CD environment as a secret
+4. Cloud deployment: Use environment variables (Hugging Face Spaces)
 
 The token.json file contains a refresh token that allows indefinite
 re-authentication without requiring interactive login.
 """
 
+import json
 import logging
 import os
+
+# Import secrets manager for cloud deployments
+import sys
 from pathlib import Path
 from typing import List, Optional
 
@@ -24,6 +29,9 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from googleapiclient.http import MediaFileUpload
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from utils.secrets import get_google_credentials_json, get_google_folder_id, get_google_token_json
 
 logger = logging.getLogger(__name__)
 
@@ -45,25 +53,52 @@ FOLDER_ID_FILE = CREDENTIALS_DIR / "folder_id.txt"
 
 def get_oauth_credentials() -> Optional[Credentials]:
     """
-    Gets valid OAuth credentials from token.json or initiates auth flow.
+    Gets valid OAuth credentials from token.json, environment variables, or initiates auth flow.
 
     This function:
-    1. Loads existing token.json if available
-    2. Refreshes expired tokens automatically
-    3. Initiates OAuth flow only if no valid token exists
-    4. Saves token.json for future use (including refresh token)
+    1. Tries to load from environment variables (cloud deployments)
+    2. Loads existing token.json if available (local/CI/CD)
+    3. Refreshes expired tokens automatically
+    4. Initiates OAuth flow only if no valid token exists
+    5. Saves token.json for future use (including refresh token)
 
     For CI/CD:
     - Run locally once to generate token.json
     - Copy token.json to CI/CD as a secret
     - All subsequent runs use the cached token
 
+    For Cloud Deployments (Hugging Face, etc.):
+    - Set GOOGLE_TOKEN and GOOGLE_CREDENTIALS environment variables
+    - No file-based authentication needed
+
     Returns:
         Valid credentials or None if authentication fails
     """
     creds = None
 
-    # Step 1: Try to load existing token
+    # Step 1: Try to load from environment variables (for cloud deployments)
+    token_json = get_google_token_json()
+    if token_json:
+        try:
+            creds = Credentials.from_authorized_user_info(token_json, SCOPES)
+            logger.info("Loaded credentials from environment variables")
+
+            # Refresh if expired
+            if creds.expired and creds.refresh_token:
+                try:
+                    logger.info("Refreshing expired token from environment...")
+                    creds.refresh(Request())
+                    logger.info("✓ Token refreshed successfully")
+                except Exception as e:
+                    logger.warning(f"Failed to refresh token: {e}")
+                    creds = None
+
+            if creds and creds.valid:
+                return creds
+        except Exception as e:
+            logger.warning(f"Failed to load credentials from environment: {e}")
+
+    # Step 2: Try to load existing token from file
     if TOKEN_PATH.exists():
         try:
             creds = Credentials.from_authorized_user_file(str(TOKEN_PATH), SCOPES)
@@ -72,7 +107,7 @@ def get_oauth_credentials() -> Optional[Credentials]:
             logger.warning(f"Failed to load token.json: {e}")
             creds = None
 
-    # Step 2: Refresh if expired, or get new token if none exists
+    # Step 3: Refresh if expired, or get new token if none exists
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
             try:
@@ -84,7 +119,35 @@ def get_oauth_credentials() -> Optional[Credentials]:
                 logger.error("You may need to re-authenticate (delete token.json and run again)")
                 return None
         else:
-            # Step 3: No valid token - need to authenticate
+            # Step 4: Try to get credentials from environment for initial setup
+            creds_json = get_google_credentials_json()
+            if creds_json:
+                try:
+                    logger.info("Using credentials from environment variables")
+                    # Create a temporary credentials file
+                    temp_creds_path = Path("/tmp/google_credentials.json")
+                    temp_creds_path.parent.mkdir(parents=True, exist_ok=True)
+                    with open(temp_creds_path, "w") as f:
+                        json.dump(creds_json, f)
+
+                    flow = InstalledAppFlow.from_client_secrets_file(str(temp_creds_path), SCOPES)
+
+                    # Try to run without browser (for cloud environments)
+                    try:
+                        creds = flow.run_console()
+                    except Exception:
+                        logger.warning("Console authentication not available in cloud environment")
+                        return None
+
+                    # Clean up temp file
+                    temp_creds_path.unlink()
+
+                    if creds:
+                        return creds
+                except Exception as e:
+                    logger.warning(f"Failed to authenticate with environment credentials: {e}")
+
+            # Step 5: No valid token - need to authenticate with local file
             if not CREDENTIALS_PATH.exists():
                 logger.error(f"Credentials file not found at {CREDENTIALS_PATH}")
                 logger.error("Please download OAuth 2.0 credentials from Google Cloud Console")
@@ -125,7 +188,7 @@ def get_oauth_credentials() -> Optional[Credentials]:
                 logger.error("3. Verify OAuth consent screen is configured")
                 return None
 
-        # Step 4: Save the credentials for future use
+        # Step 6: Save the credentials for future use
         if creds:
             try:
                 CREDENTIALS_DIR.mkdir(parents=True, exist_ok=True)
@@ -143,6 +206,8 @@ def get_or_create_folder(service, folder_name: str = "mangetamain-data") -> Opti
     """
     Gets or creates a dedicated folder for the app's data.
 
+    Checks environment variables first, then cached file, then searches/creates.
+
     Args:
         service: Authenticated Drive API service
         folder_name: Name of the folder to create
@@ -150,7 +215,18 @@ def get_or_create_folder(service, folder_name: str = "mangetamain-data") -> Opti
     Returns:
         Folder ID or None if operation failed
     """
-    # Check if we have a cached folder ID
+    # Check if we have a folder ID from environment variables (for cloud deployments)
+    env_folder_id = get_google_folder_id()
+    if env_folder_id:
+        try:
+            # Verify the folder exists
+            service.files().get(fileId=env_folder_id, fields="id,name").execute()
+            logger.info(f"Using folder ID from environment: {env_folder_id}")
+            return env_folder_id
+        except HttpError as e:
+            logger.warning(f"Environment folder ID is invalid: {e}")
+
+    # Check if we have a cached folder ID (for local/CI-CD)
     if FOLDER_ID_FILE.exists():
         try:
             with open(FOLDER_ID_FILE, "r") as f:
