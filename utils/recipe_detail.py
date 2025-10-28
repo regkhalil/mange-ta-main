@@ -7,6 +7,7 @@ import plotly.graph_objects as go
 import streamlit as st
 
 from services.data_loader import load_recipes
+from services.pexels_image_service import get_image_from_pexels
 
 
 def render_recipe_card_mini(recipe: pd.Series) -> None:
@@ -14,44 +15,56 @@ def render_recipe_card_mini(recipe: pd.Series) -> None:
     recipe_name = recipe.get("name", f"Recette #{int(recipe.get('id', 0))}")
     display_name = recipe_name if len(recipe_name) <= 60 else recipe_name[:57] + "..."
 
+    # Fetch image via Pexels
+    image_url = get_image_from_pexels(recipe_name)
+
     nutri_grade = recipe.get("nutrition_grade", "C")
     nutri_colors = {"A": "#238B45", "B": "#85BB2F", "C": "#FECC00", "D": "#FF9500", "E": "#E63946"}
     nutri_color = nutri_colors.get(nutri_grade, "#7f8c8d")
 
-    is_veg = recipe.get("is_vegetarian", False)
-    prep_time = int(recipe.get("minutes", recipe.get("minutes", 30)))
+    is_veg = recipe.get("isVegetarian", False) or recipe.get("is_vegetarian", False)
+    prep_time = int(recipe.get("totalTime", recipe.get("minutes", 30)))
     n_ingredients = int(recipe.get("n_ingredients", 0))
 
+    # Create badges/tags (always display essential tags)
     tags = []
 
-    # Tag temps de préparation with tooltip
+    # Preparation time tag
     if prep_time >= 120:
-        tags.append(("🍲", "#d9534f", f"Longue ({prep_time} min)"))
+        tags.append((f"🍲 Longue ({prep_time} min)", "#d9534f"))
     elif prep_time <= 30:
-        tags.append(("⚡", "#007bff", f"Rapide ({prep_time} min)"))
+        tags.append((f"⚡ Rapide ({prep_time} min)", "#007bff"))
     elif prep_time <= 60:
-        tags.append(("⏱️", "#ffc107", f"Moyen ({prep_time} min)"))
+        tags.append((f"⏱️ Moyen ({prep_time} min)", "#ffc107"))
+    else:
+        tags.append((f"⏱️ {prep_time} min", "#ff6347"))
 
-    # Tag nombre d'ingrédients with tooltip
+    # Ingredients count tag
     if n_ingredients > 0:
         if n_ingredients <= 5:
-            tags.append(("🥗", "#17a2b8", f"Simple ({n_ingredients} ingr.)"))
+            tags.append((f"🥗 Simple ({n_ingredients} ingr.)", "#17a2b8"))
         elif n_ingredients <= 10:
-            tags.append(("🥘", "#6c757d", f"Modéré ({n_ingredients} ingr.)"))
+            tags.append((f"🥘 Modéré ({n_ingredients} ingr.)", "#6c757d"))
         else:
-            tags.append(("👨‍🍳", "#6f42c1", f"Élaboré ({n_ingredients} ingr.)"))
+            tags.append((f"👨‍🍳 Élaboré ({n_ingredients} ingr.)", "#6f42c1"))
 
-    # Tag végétarien with tooltip
+    # Calories tag (always displayed, even if 0)
+    calories = int(recipe.get("calories", 0))
+    tags.append((str(calories) + " kcal", "#E74C3C"))
+
+    # Vegetarian tag (displayed only if true)
     if is_veg:
-        tags.append(("🌱", "#28a745", "Végétarien"))
+        tags.append(("🌱 Végétarien", "#2ECC71"))
 
-    # Compact tags for top-left corner with hover tooltips
+    # Nutri-Score tag (always displayed)
+    tags.append(("Nutri-Score " + nutri_grade, nutri_color))
+
     tags_html = " ".join(
         [
-            f'<span title="{tooltip}" style="background-color: {color}; color: white; padding: 2px 6px; '
-            f"border-radius: 8px; font-size: 0.7rem; margin-right: 3px; display: inline-block; "
+            f'<span style="background-color: {color}; color: white; padding: 4px 10px; '
+            f"border-radius: 12px; font-size: 0.75rem; margin-right: 5px; display: inline-block; "
             f'vertical-align: middle; white-space: nowrap;">{tag}</span>'
-            for tag, color, tooltip in tags
+            for tag, color in tags
         ]
     )
 
@@ -82,11 +95,7 @@ def render_recipe_card_mini(recipe: pd.Series) -> None:
         stars_html += "✨"
     stars_html += "☆" * empty_stars
 
-    # Grade tooltip - show exact nutri-score (not rounded)
-    nutri_score = float(recipe.get("nutrition_score", 50))
-    grade_tooltip = f"Score: {nutri_score:.2f}"
-
-    rating_display = f'<div style="margin-top: 0.5rem; font-size: 0.85rem; color: #ffc107;">{stars_html} <span style="color: #e0e0e0;">{rating:.1f}/5</span></div>'
+    rating_display = f'<div style="margin-top: 0.5rem; font-size: 0.9rem; color: #ffc107;">{stars_html} <span style="color: #e0e0e0;">{rating:.1f}/5</span></div>'
 
     card_html = f"""
     <div style="
@@ -94,46 +103,46 @@ def render_recipe_card_mini(recipe: pd.Series) -> None:
         overflow: hidden;
         box-shadow: 0 2px 8px rgba(0,0,0,0.15);
         background: white;
-        height: 380px;
+        height: 420px;
         display: flex;
         flex-direction: column;
         transition: transform 0.2s ease;
     ">
         <div style="
             width: 100%;
-            height: 180px;
+            height: 200px;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             position: relative;
             display: flex;
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
+            overflow: hidden;
         ">
             <div style="
                 position: absolute;
-                top: 8px;
-                left: 8px;
-            ">{tags_html}</div>
-            <div title="{grade_tooltip}" style="
-                position: absolute;
-                top: 8px;
-                right: 8px;
+                top: 12px;
+                right: 12px;
                 background-color: {nutri_color};
-                color: #1a1a1a;
+                color: white;
                 font-weight: bold;
-                font-size: 15px;
-                padding: 2px 8px;
-                border-radius: 2px;
+                font-size: 14px;
+                padding: 4px 12px;
+                border-radius: 6px;
                 box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+                z-index: 10;
             ">{nutri_grade}</div>
-            <div style="color: rgba(255,255,255,0.5); font-size: 3rem;">🍽️</div>
+            {f'<img src="{image_url}" style="width: 100%; height: 100%; object-fit: cover;" alt="{recipe_name}" />' if image_url else '<div style="color: rgba(255,255,255,0.5); font-size: 3rem;">🍽️</div>'}
         </div>
         <div style="background: #2c2c2c; padding: 1rem; color: white; 
-                    height: 200px; flex-shrink: 0; display: flex; flex-direction: column;">
-            <h3 style="margin: 0 0 0.5rem 0; font-size: 1.1rem; color: white; 
-                       font-weight: 700; line-height: 1.3; flex-shrink: 0;">{display_name}</h3>
-            <p style="margin: 0; font-size: 0.8rem; color: #b0b0b0;
-                      line-height: 1.3; overflow: hidden;">{description}</p>
+                    height: 220px; flex-shrink: 0; display: flex; flex-direction: column;">
+            <div style="margin-bottom: 0.7rem; min-height: 28px;">{tags_html}</div>
+            <h3 style="margin: 0 0 0.5rem 0; font-size: 1.25rem; color: white; 
+                       font-weight: 700; line-height: 1.3; height: 3.5rem;
+                       overflow: hidden; text-overflow: ellipsis; display: -webkit-box;
+                       -webkit-line-clamp: 2; -webkit-box-orient: vertical;">{display_name}</h3>
+            <p style="margin: 0; font-size: 0.85rem; color: #b0b0b0;
+                      line-height: 1.4; flex-grow: 1; overflow: hidden;">{description}</p>
             {rating_display}
         </div>
     </div>
@@ -171,74 +180,110 @@ def render_recipe_detail(recipes_df: pd.DataFrame, recommender, recipe_id: int, 
             del st.session_state.current_recipe_id
         st.switch_page("app.py")
 
-    # En-tête avec titre - Full name display with prominent sans-serif font
+    # Header with title
     recipe_name_clean = str(recipe_name).replace("'", "&#39;").replace('"', "&quot;")
     title_html = (
-        f"<div style='margin-bottom: 0.5rem;'>"
-        f"<h1 style='font-size: 2.8rem; color: #1a1a1a; margin-bottom: 0.5rem; font-weight: 400; "
-        f'line-height: 1.2; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;\'>'
+        f"<div style='margin-bottom: 1.5rem;'>"
+        f"<h1 style='font-size: 2.5rem; color: #ffffff; margin-bottom: 1rem; font-weight: 700;'>"
         f"{recipe_name_clean}"
         f"</h1>"
         f"</div>"
     )
     st.markdown(title_html, unsafe_allow_html=True)
 
-    # Badges avec informations clés
-    prep_time = int(target_recipe.get("minutes", target_recipe.get("minutes", 30)))
+    # Badges with key information
+    prep_time = int(target_recipe.get("totalTime", target_recipe.get("minutes", 30)))
 
-    # Extract calories from nutrition array
-    calories = 0
-    nutrition_data = target_recipe.get("nutrition")
-    if nutrition_data:
-        try:
-            if isinstance(nutrition_data, str):
-                nutrition_array = ast.literal_eval(nutrition_data)
-            else:
-                nutrition_array = nutrition_data
-            calories = int(nutrition_array[0]) if nutrition_array else 0
-        except (ValueError, IndexError, SyntaxError):
-            calories = 0
+    # Extract calories from nutrition array (or use direct column if available)
+    calories = int(target_recipe.get("calories", 0))
+    if calories == 0:
+        # Fallback: extract from nutrition array
+        nutrition_data = target_recipe.get("nutrition")
+        if nutrition_data:
+            try:
+                if isinstance(nutrition_data, str):
+                    nutrition_array = ast.literal_eval(nutrition_data)
+                else:
+                    nutrition_array = nutrition_data
+                calories = int(nutrition_array[0]) if nutrition_array else 0
+            except (ValueError, IndexError, SyntaxError):
+                calories = 0
 
-    is_veg = target_recipe.get("is_vegetarian", False)
+    is_veg = target_recipe.get("isVegetarian", target_recipe.get("is_vegetarian", False))
     nutri_grade = target_recipe.get("nutrition_grade", "C")
     nutri_score = float(target_recipe.get("nutrition_score", 50))
+    n_ingredients = int(target_recipe.get("n_ingredients", 0))
 
     nutri_colors = {"A": "#28a745", "B": "#82c91e", "C": "#ffc107", "D": "#fd7e14", "E": "#dc3545"}
     nutri_color = nutri_colors.get(nutri_grade, "#6c757d")
 
-    if prep_time <= 30:
-        time_tag = "⚡ Rapide"
-        time_color = "#007bff"
-    elif prep_time <= 60:
-        time_tag = "⏱️ Moyen"
-        time_color = "#ffc107"
-    else:
-        time_tag = "🍲 Longue"
-        time_color = "#dc3545"
+    # Create comprehensive tags list
+    tags = []
 
-    veg_badge = ""
+    # Preparation time tag
+    if prep_time >= 120:
+        tags.append((f"🍲 Longue ({prep_time} min)", "#d9534f"))
+    elif prep_time <= 30:
+        tags.append((f"⚡ Rapide ({prep_time} min)", "#007bff"))
+    elif prep_time <= 60:
+        tags.append((f"⏱️ Moyen ({prep_time} min)", "#ffc107"))
+    else:
+        tags.append((f"⏱️ {prep_time} min", "#ff6347"))
+
+    # Ingredients count tag
+    if n_ingredients > 0:
+        if n_ingredients <= 5:
+            tags.append((f"🥗 Simple ({n_ingredients} ingr.)", "#17a2b8"))
+        elif n_ingredients <= 10:
+            tags.append((f"🥘 Modéré ({n_ingredients} ingr.)", "#6c757d"))
+        else:
+            tags.append((f"👨‍🍳 Élaboré ({n_ingredients} ingr.)", "#6f42c1"))
+
+    # Calories tag
+    tags.append((f"🔥 {calories} kcal", "#ff6b6b"))
+
+    # Vegetarian tag
     if is_veg:
-        veg_badge = "<span style='background: #28a745; color: white; padding: 0.4rem 1rem; border-radius: 20px; font-size: 0.9rem; font-weight: 600;'>🌱 Végétarien</span>"
+        tags.append(("🌱 Végétarien", "#28a745"))
+
+    # Nutri-Score tag (with link to analysis)
+    nutri_tag_html = f"<a href='#nutrition-analysis' style='text-decoration: none;'><span title='Score: {nutri_score:.2f} - Cliquez pour voir l&#39;analyse détaillée' style='background: {nutri_color}; color: white; padding: 0.4rem 1rem; border-radius: 20px; font-size: 0.9rem; font-weight: 700; cursor: pointer;'>Nutri-Score {nutri_grade}</span></a>"
+
+    # Build badges HTML
+    badges_list = " ".join(
+        [
+            f"<span style='background: {color}; color: white; padding: 0.4rem 1rem; border-radius: 20px; font-size: 0.9rem; font-weight: 600;'>{tag}</span>"
+            for tag, color in tags
+        ]
+    )
 
     badges_html = (
         f"<div style='display: flex; gap: 0.75rem; margin-bottom: 1.5rem; flex-wrap: wrap; align-items: center;'>"
-        f"<span style='background: {time_color}; color: white; padding: 0.4rem 1rem; border-radius: 20px; font-size: 0.9rem; font-weight: 600;'>{time_tag} ({prep_time} min)</span>"
-        f"<span style='background: #ff6b6b; color: white; padding: 0.4rem 1rem; border-radius: 20px; font-size: 0.9rem; font-weight: 600;'>🔥 {calories} kcal</span>"
-        f"{veg_badge}"
-        f"<span style='margin-left: auto;'></span>"
-        f"<a href='#nutrition-analysis' style='text-decoration: none;'><span title='Score: {nutri_score:.2f} - Cliquez pour voir l&#39;analyse détaillée' style='background: {nutri_color}; color: #1a1a1a; padding: 0.3rem 0.8rem; border-radius: 4px; font-size: 1.1rem; font-weight: 700; border: 2px solid {nutri_color}; cursor: pointer;'>{nutri_grade}</span></a>"
+        f"{badges_list}"
+        f"{nutri_tag_html}"
         f"</div>"
     )
     st.markdown(badges_html, unsafe_allow_html=True)
 
-    # Grande image de la recette (placeholder)
-    image_html = (
-        "<div style='width: 100%; height: 400px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); "
-        "border-radius: 15px; display: flex; align-items: center; justify-content: center; margin-bottom: 2rem; "
-        "box-shadow: 0 4px 12px rgba(0,0,0,0.1);'>"
-        "<div style='color: rgba(255,255,255,0.4); font-size: 5rem;'>🍽️</div>"
-        "</div>"
-    )
+    # Large recipe image from Pexels - centered with reduced width
+    image_url = get_image_from_pexels(recipe_name)
+    if image_url:
+        image_html = (
+            f"<div style='display: flex; justify-content: center; margin-bottom: 2rem;'>"
+            f"<div style='width: 40%; height: 350px; border-radius: 15px; overflow: hidden; "
+            f"box-shadow: 0 4px 12px rgba(0,0,0,0.1);'>"
+            f"<img src='{image_url}' style='width: 100%; height: 100%; object-fit: cover;' alt='{recipe_name}' />"
+            f"</div></div>"
+        )
+    else:
+        image_html = (
+            "<div style='display: flex; justify-content: center; margin-bottom: 2rem;'>"
+            "<div style='width: 40%; height: 350px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); "
+            "border-radius: 15px; display: flex; align-items: center; justify-content: center; "
+            "box-shadow: 0 4px 12px rgba(0,0,0,0.1);'>"
+            "<div style='color: rgba(255,255,255,0.4); font-size: 5rem;'>🍽️</div>"
+            "</div></div>"
+        )
     st.markdown(image_html, unsafe_allow_html=True)
 
     # Description - Subtle styling to keep focus on the title
@@ -254,7 +299,7 @@ def render_recipe_detail(recipes_df: pd.DataFrame, recommender, recipe_id: int, 
         )
         st.markdown(description_html, unsafe_allow_html=True)
 
-    # Section Ingrédients - Compact inline display
+    # Ingredients section - compact inline display
     st.markdown("### Ingrédients")
 
     ingredients_text = target_recipe.get("ingredients", "")
