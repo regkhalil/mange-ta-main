@@ -30,10 +30,10 @@ def compute_quantile_bins(data: List[float], n_quantiles: int = 5) -> Tuple[List
     quantiles = np.linspace(0, 100, n_quantiles + 1)
     bins = np.percentile(data_array, quantiles)
 
-    # Compter les éléments dans chaque bin
+    # Count elements in each bin
     counts, _ = np.histogram(data_array, bins=bins)
 
-    # Créer les labels
+    # Create labels
     labels = []
     for i in range(len(bins) - 1):
         label = f"{bins[i]:.0f}-{bins[i + 1]:.0f}"
