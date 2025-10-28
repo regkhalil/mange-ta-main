@@ -559,32 +559,28 @@ def render_recipe_detail(recipes_df: pd.DataFrame, recommender, recipe_id: int, 
     st.markdown(recommendations_header, unsafe_allow_html=True)
 
     with st.spinner("Calcul des recommandations..."):
-        recommendations = recommender.get_similar_recipes(recipe_id, k=8)
+        recommendations = recommender.get_similar_recipes(
+            recipe_id, k=4
+        )  # Réduit de 8 à 4 pour meilleures performances
 
     if recommendations:
-        for i in range(0, len(recommendations), 4):
-            cols = st.columns(4, gap="medium")
-            for j, col in enumerate(cols):
-                idx = i + j
-                if idx < len(recommendations):
-                    recipe, score = recommendations[idx]
-                    with col:
-                        render_recipe_card_mini(recipe)
-                        st.markdown("<div style='height: 0.5rem;'></div>", unsafe_allow_html=True)
+        cols = st.columns(4, gap="medium")
+        for j, col in enumerate(cols):
+            if j < len(recommendations):
+                recipe, score = recommendations[j]
+                with col:
+                    render_recipe_card_mini(recipe)
+                    st.markdown("<div style='height: 0.5rem;'></div>", unsafe_allow_html=True)
 
-                        # Bouton pour voir cette recette
-                        if st.button(
-                            "📖 Voir la recette",
-                            key=f"view_rec_{recipe['id']}",
-                            use_container_width=True,
-                            type="primary",
-                        ):
-                            if on_view_similar:
-                                on_view_similar(recipe["id"])
-
-            # Add spacing between rows
-            if i + 4 < len(recommendations):
-                st.markdown("<div style='height: 1.5rem;'></div>", unsafe_allow_html=True)
+                    # Bouton pour voir cette recette
+                    if st.button(
+                        "📖 Voir la recette",
+                        key=f"view_rec_{recipe['id']}",
+                        use_container_width=True,
+                        type="primary",
+                    ):
+                        if on_view_similar:
+                            on_view_similar(recipe["id"])
 
     # Bouton retour en bas
     st.markdown("<br><br>", unsafe_allow_html=True)

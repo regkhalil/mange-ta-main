@@ -24,5 +24,5 @@ def navigate_to_recipe(recipe_id: int):
     # Stocker la nouvelle page
     st.session_state.current_detail_page = next_page
 
-    # Navigate to alternate page
+    # Navigate to alternate page - switch immédiatement
     st.switch_page(f"pages/recipe_detail_{next_page}.py")

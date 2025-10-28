@@ -24,7 +24,7 @@ PEXELS_API_KEY = os.getenv("PEXELS_API_KEY", "kf3rfQoEUAGezF8M4T6gJ4gKLiIZw93xd0
 FALLBACK_IMAGE_URL = "https://via.placeholder.com/400x300/667eea/ffffff?text=No+Image"
 
 
-@st.cache_data(ttl=3600)  # Cache pendant 1 heure
+@st.cache_data(ttl=604800)  # Cache pendant 7 jours pour meilleures performances
 def get_image_from_pexels(recipe_name: str, per_page: int = 1) -> Optional[str]:
     """
     Récupère l'URL d'une image correspondant au nom de la recette via l'API Pexels.
@@ -64,7 +64,7 @@ def get_image_from_pexels(recipe_name: str, per_page: int = 1) -> Optional[str]:
         }
 
         # Execute request with reduced timeout
-        response = requests.get(url, headers=headers, params=params, timeout=5)
+        response = requests.get(url, headers=headers, params=params, timeout=1)
         response.raise_for_status()
 
         # Process response
