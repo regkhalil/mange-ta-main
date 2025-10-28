@@ -122,8 +122,15 @@ def main() -> None:
 
     # Remove unneeded columns and store the final dataframe in a csv
     logger.info("Selecting relevant columns for the final preprocessed DataFrame.")
+
     # Only select the cleaned columns and other needed columns
     # Drop original unmodified columns (name, description, steps, tags, ingredients)
+    # Note: We keep both 'nutrition' (full array) and 'calories' (extracted) because:
+    #   - 'nutrition': Complete nutritional data [calories, fat, sugar, sodium, protein, sat_fat, carbs]
+    #                  Kept for future use and detailed nutrition displays
+    #   - 'calories': Extracted first value from nutrition array for direct access
+    #                 Avoids parsing the array on every recipe card display (~12 per page)
+    #                 Trade-off: ~100KB extra disk space for significantly faster runtime performance
     df_preprocessed = df_cleaned[
         [
             "name_cleaned",
@@ -139,6 +146,7 @@ def main() -> None:
             "nutrition_score",
             "nutrition_grade",
             "is_vegetarian",
+            "calories",
         ]
     ].copy()
 
@@ -157,6 +165,7 @@ def main() -> None:
         "nutrition_score",
         "nutrition_grade",
         "is_vegetarian",
+        "calories",
     ]
 
     logger.info(f"Final DataFrame shape: {df_preprocessed.shape}")
