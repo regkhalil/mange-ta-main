@@ -133,7 +133,7 @@ def render_filters_panel(in_sidebar=True):
     st.session_state.filters["vegetarian_only"] = vegetarian
 
     # Bouton de réinitialisation
-    if veg_col.button("🔄 Réinitialiser les filtres", use_container_width=True):
+    if veg_col.button("🔄 Réinitialiser les filtres", type="primary", use_container_width=True):
         st.session_state.filters = {
             "prep": [0, 300],
             "ingredients": [1, 45],
