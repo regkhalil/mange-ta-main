@@ -9,9 +9,18 @@ from utils.recipe_detail import render_recipe_detail
 
 st.set_page_config(page_title="Détail Recette - Mangetamain", page_icon="📖", layout="wide")
 
+# AUTO-REDIRECT ON PAGE REFRESH
+# Ne rediriger QUE si on n'a ni navigation flag ni recipe_id
+if "from_navigation" not in st.session_state and "recipe_id_to_view" not in st.session_state:
+    st.switch_page("app.py")
+
 
 def main():
     """Affiche le détail d'une recette."""
+    # Clear navigation flag after verification
+    if "from_navigation" in st.session_state:
+        del st.session_state.from_navigation
+
     recipe_id = st.session_state.get("recipe_id_to_view") or st.query_params.get("id")
 
     if not recipe_id:
