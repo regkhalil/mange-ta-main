@@ -15,13 +15,17 @@ from services.pexels_image_service import get_image_from_pexels
 from services.recommender import get_recommender
 from utils.navigation import navigate_to_recipe
 
-# Configuration
+# Configuration du logging
+# Créer le dossier logs s'il n'existe pas (chemin absolu)
+LOGS_DIR = Path(__file__).parent / "logs"
+LOGS_DIR.mkdir(exist_ok=True)
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     handlers=[
-        logging.FileHandler("logs/app.log"),
-        logging.FileHandler("logs/errors.log", mode="a"),
+        logging.FileHandler(LOGS_DIR / "app.log"),
+        logging.FileHandler(LOGS_DIR / "errors.log", mode="a"),
     ],
 )
 logger = logging.getLogger(__name__)
