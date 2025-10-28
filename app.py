@@ -16,18 +16,27 @@ from services.recommender import get_recommender
 from utils.navigation import navigate_to_recipe
 
 # Configuration du logging
-# Créer le dossier logs s'il n'existe pas (chemin absolu)
-LOGS_DIR = Path(__file__).parent / "logs"
-LOGS_DIR.mkdir(exist_ok=True)
+# Essayer d'utiliser des fichiers, sinon passer en mode console uniquement (pour Hugging Face Spaces)
+try:
+    LOGS_DIR = Path(__file__).parent / "logs"
+    LOGS_DIR.mkdir(exist_ok=True)
+    
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        handlers=[
+            logging.FileHandler(LOGS_DIR / "app.log"),
+            logging.FileHandler(LOGS_DIR / "errors.log", mode="a"),
+        ],
+    )
+except (OSError, PermissionError):
+    # Si impossible de créer des fichiers (ex: Hugging Face Spaces), utiliser la console
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        handlers=[logging.StreamHandler()],
+    )
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[
-        logging.FileHandler(LOGS_DIR / "app.log"),
-        logging.FileHandler(LOGS_DIR / "errors.log", mode="a"),
-    ],
-)
 logger = logging.getLogger(__name__)
 
 # Constantes
