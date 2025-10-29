@@ -197,12 +197,14 @@ NUTRIENT_WEIGHTS = {
 
 def parse_nutrition_entry(value: Union[str, list, tuple, None]) -> Optional[List[float]]:
     """Parse nutrition data from various formats into list of 7 floats."""
-    if pd.isna(value):
+    if value is None:
         return None
-    if isinstance(value, (list, tuple)) and len(value) == 7:
-        if any(pd.isna(x) for x in value):
-            return None
-        return list(value)
+    if isinstance(value, (list, tuple)):
+        if len(value) == 7:
+            if any(pd.isna(x) for x in value):
+                return None
+            return list(value)
+        return None
     if isinstance(value, str):
         try:
             parsed = ast.literal_eval(value)
@@ -212,6 +214,13 @@ def parse_nutrition_entry(value: Union[str, list, tuple, None]) -> Optional[List
                 return list(parsed)
         except Exception:
             return None
+    # Check if it's a scalar that pandas considers NaN
+    try:
+        if pd.isna(value):
+            return None
+    except (ValueError, TypeError):
+        # If pd.isna fails, it's not a simple scalar
+        pass
     return None
 
 

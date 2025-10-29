@@ -90,6 +90,12 @@ def compute_popularity_metrics(interactions_df: pd.DataFrame) -> pd.DataFrame:
     # Flatten column names
     popularity_metrics.columns = ["recipe_id", "average_rating", "review_count"]
 
+    # Handle empty DataFrame case
+    if len(popularity_metrics) == 0:
+        # Create empty DataFrame with correct column types
+        popularity_metrics["popularity_score"] = pd.Series([], dtype="float64")
+        return popularity_metrics
+
     # Round average rating to 2 decimal places
     popularity_metrics["average_rating"] = popularity_metrics["average_rating"].round(2)
 

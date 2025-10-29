@@ -1,0 +1,45 @@
+# Configuration de coverage.py pour le projet mange-ta-main
+
+[run]
+source = preprocessing
+omit = 
+    */tests/*
+    */test_*
+    */conftest.py
+    */venv/*
+    */__pycache__/*
+    */.*
+    setup.py
+
+[report]
+# Affichage du rapport
+show_missing = True
+skip_covered = False
+sort = Cover
+precision = 2
+
+# Exclure les lignes sans couverture
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    if self.debug:
+    if settings.DEBUG
+    raise AssertionError
+    raise NotImplementedError
+    if 0:
+    if __name__ == .__main__.:
+    class .*\(Protocol\):
+    @(abc\.)?abstractmethod
+
+# Seuils de couverture
+fail_under = 80
+
+[html]
+directory = htmlcov
+title = Coverage Report - Preprocessing Module
+
+[xml]
+output = reports/coverage.xml
+
+[json]
+output = reports/coverage.json
