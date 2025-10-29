@@ -6,6 +6,8 @@ repo_name: regkhalil/mange-ta-main
 nav:
   - Overview: index.md
   - Getting Started: getting-started.md
+  - Application Features: app-features.md
+  - Data Analytics: data-analytics.md
   - Preprocessing: preprocessing.md
   - CI/CD: cicd.md
   - Reference:
