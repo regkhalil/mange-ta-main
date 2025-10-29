@@ -40,3 +40,22 @@ make docs-build
 ```
 
 MkDocs uses `mkdocstrings` to render API sections directly from the project's Python docstrings. Update docstrings in the codebase and refresh the browser to see changes immediately.
+
+## Additional make targets
+
+- `make start`: Run the Streamlit app without reinstalling or preprocessing.
+- `make preprocess`: Execute the preprocessing pipeline only.
+- `make docs-build` / `make docs-serve`: Build or serve MkDocs documentation.
+- `make clean`: Remove generated data, logs, and caches.
+
+## Testing & quality
+
+- `make test`: Execute the pytest suite under `uv`.
+- `make lint`: Run Ruff with autofix mode.
+- `make format`: Apply Ruff formatting.
+- `make fix`: Combine linting and formatting in one step before committing.
+
+## Documentation delivery
+
+- `.github/workflows/docs.yml` builds the MkDocs site with `uv` and deploys it to GitHub Pages on every push to `main` that touches the docs or Python modules with docstrings.
+- The published site lives at <https://regkhalil.github.io/mange-ta-main/>; re-run the workflow manually from the Actions tab if you need an ad-hoc rebuild.
