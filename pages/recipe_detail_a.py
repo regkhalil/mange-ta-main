@@ -41,6 +41,12 @@ st.markdown(
     .recipe-similar-card-dark p {
         color: #b0b0b0 !important;
     }
+    .recipe-similar-card-dark .recipe-rating-stars {
+        color: #ffc107 !important;
+    }
+    .recipe-similar-card-dark .recipe-rating-text {
+        color: #ffffff !important;
+    }
     
     /* Tables avec fond blanc */
     table, thead, tbody, tr, td, th {

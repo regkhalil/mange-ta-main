@@ -96,7 +96,7 @@ def render_recipe_card_mini(recipe: pd.Series) -> None:
         stars_html += "✨"
     stars_html += "☆" * empty_stars
 
-    rating_display = f'<div style="margin-top: 0.5rem; font-size: 0.9rem; color: #ffc107;">{stars_html} <span style="color: #e0e0e0;">{rating:.1f}/5 ({review_count})</span></div>'
+    rating_display = f'<div class="recipe-rating-stars" style="margin-top: 0.5rem; font-size: 0.9rem; color: #ffc107 !important;">{stars_html} <span class="recipe-rating-text" style="color: #ffffff !important;">{rating:.1f}/5 ({review_count})</span></div>'
 
     card_html = f"""
     <div style="
