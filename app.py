@@ -140,13 +140,26 @@ def inject_global_styles() -> None:
         transform: translateY(-2px) !important;
         box-shadow: 0 4px 12px rgba(255, 75, 92, 0.4) !important;
     }
-    /* Cartes de recettes */
+    /* Cartes de recettes - hauteur uniforme */
     .recipe-card {
         transition: transform 0.2s ease, box-shadow 0.2s ease;
+        height: 100% !important;
+        display: flex !important;
+        flex-direction: column !important;
     }
     .recipe-card:hover {
         transform: translateY(-4px);
         box-shadow: 0 8px 16px rgba(0,0,0,0.2) !important;
+    }
+    /* Colonnes alignées */
+    div[data-testid="column"] {
+        display: flex !important;
+        flex-direction: column !important;
+    }
+    div[data-testid="column"] > div {
+        flex: 1 !important;
+        display: flex !important;
+        flex-direction: column !important;
     }
     </style>""",
         unsafe_allow_html=True,
@@ -514,7 +527,7 @@ def render_recipe_card_horizontal(recipe: pd.Series, recipe_id: int) -> None:
             box-shadow: 0 2px 8px rgba(0,0,0,0.3);
             margin-bottom: 1.2rem;
             transition: all 0.3s ease;
-            height: 100%;
+            min-height: 480px;
         }}
         .recipe-row-compact:hover {{
             transform: translateY(-3px);
@@ -522,7 +535,7 @@ def render_recipe_card_horizontal(recipe: pd.Series, recipe_id: int) -> None:
         }}
         .recipe-img-compact {{
             width: 100%;
-            height: 180px;
+            height: 200px;
             position: relative;
             overflow: hidden;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -772,19 +785,17 @@ def _display_recipes_grid(filtered_recipes: pd.DataFrame, total_results: int) ->
 
     display_recipes = filtered_recipes.iloc[start_idx:end_idx]
 
-    # Affichage en grille : 3 colonnes par ligne avec espacement sur les côtés
+    # Affichage en grille : 3 colonnes par ligne
     n_cols = 3
     for i in range(0, len(display_recipes), n_cols):
-        # Créer des colonnes avec espacement sur les extrémités
-        cols = st.columns([0.5, 2, 2, 2, 0.5])
+        cols = st.columns(n_cols, gap="medium")
 
         for j in range(n_cols):
             idx = i + j
             if idx < len(display_recipes):
                 recipe = display_recipes.iloc[idx]
                 recipe_id = int(recipe["id"])
-                # Utiliser les colonnes 1, 2, 3 (en sautant 0 et 4 pour l'espacement)
-                with cols[j + 1]:
+                with cols[j]:
                     render_recipe_card_horizontal(recipe, recipe_id)
 
                     if st.button(
