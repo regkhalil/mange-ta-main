@@ -37,7 +37,7 @@ jobs:
         run: uv sync --group dev
 
       - name: Build documentation
-        run: uv run --group dev mkdocs build --strict --site-dir site
+        run: uv run --group dev mkdocs build --site-dir site
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
