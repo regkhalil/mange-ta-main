@@ -393,21 +393,22 @@ def upload_preprocessed_recipes_only(data_dir: str) -> bool:
     Returns:
         True if all uploads succeeded, False otherwise
     """
-    # Files to upload
+    # Files to upload (essential preprocessing outputs including analytics data)
     files_to_upload = [
         ("preprocessed_recipes.csv", "text/csv"),
-        ("similarity_matrix.pkl", "application/octet-stream")
+        ("similarity_matrix.pkl", "application/octet-stream"),
+        ("ingredient_health_index.csv", "text/csv"),
     ]
-    
+
     data_path = Path(data_dir)
-    
+
     # Check if all files exist
     missing_files = []
     for filename, _ in files_to_upload:
         file_path = data_path / filename
         if not file_path.exists():
             missing_files.append(filename)
-    
+
     if missing_files:
         logger.error(f"Required files not found: {', '.join(missing_files)}")
         return False
@@ -424,10 +425,10 @@ def upload_preprocessed_recipes_only(data_dir: str) -> bool:
         file_path = data_path / filename
         file_size = os.path.getsize(file_path)
         file_size_mb = file_size / (1024 * 1024)
-        
+
         logger.info(f"\nUploading: {filename} ({file_size_mb:.1f} MB)")
         file_id = upload_file_to_drive(str(file_path), filename, mime_type)
-        
+
         if file_id:
             uploaded_files.append(filename)
             logger.info(f"✓ Successfully uploaded: {filename}")
@@ -438,12 +439,12 @@ def upload_preprocessed_recipes_only(data_dir: str) -> bool:
 
     logger.info("\n" + "=" * 50)
     logger.info(f"Upload summary: {len(uploaded_files)}/{len(files_to_upload)} files uploaded")
-    
+
     if uploaded_files:
         logger.info("Successfully uploaded:")
         for filename in uploaded_files:
             logger.info(f"  ✓ {filename}")
-    
+
     if failed_files:
         logger.info("Failed uploads:")
         for filename in failed_files:
@@ -565,7 +566,7 @@ def delete_all_files_in_folder(service=None) -> bool:
             return True
 
         logger.info(f"Found {len(files)} files to delete from Google Drive")
-        
+
         success = True
         deleted_files = []
         failed_files = []
@@ -573,7 +574,7 @@ def delete_all_files_in_folder(service=None) -> bool:
         for file in files:
             file_id = file.get("id")
             file_name = file.get("name")
-            
+
             try:
                 service.files().delete(fileId=file_id).execute()
                 deleted_files.append(file_name)
@@ -584,7 +585,7 @@ def delete_all_files_in_folder(service=None) -> bool:
                 success = False
 
         logger.info(f"Deletion complete: {len(deleted_files)}/{len(files)} files deleted")
-        
+
         if failed_files:
             logger.warning("Failed to delete the following files:")
             for file_name in failed_files:

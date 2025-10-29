@@ -29,35 +29,35 @@ def render_recipe_card_mini(recipe: pd.Series) -> None:
     # Create badges/tags (always display essential tags)
     tags = []
 
-    # Preparation time tag
+    # Preparation time tag - emoji seulement
     if prep_time >= 120:
-        tags.append((f"🍲 Longue ({prep_time} min)", "#d9534f"))
+        tags.append(("🍲", "#d9534f"))
     elif prep_time <= 30:
-        tags.append((f"⚡ Rapide ({prep_time} min)", "#007bff"))
+        tags.append(("⚡", "#007bff"))
     elif prep_time <= 60:
-        tags.append((f"⏱️ Moyen ({prep_time} min)", "#ffc107"))
+        tags.append(("⏱️", "#ffc107"))
     else:
-        tags.append((f"⏱️ {prep_time} min", "#ff6347"))
+        tags.append(("⏱️", "#ff6347"))
 
-    # Ingredients count tag
+    # Ingredients count tag - emoji + nombre
     if n_ingredients > 0:
         if n_ingredients <= 5:
-            tags.append((f"🥗 Simple ({n_ingredients} ingr.)", "#17a2b8"))
+            tags.append((f"🥗 {n_ingredients}", "#17a2b8"))
         elif n_ingredients <= 10:
-            tags.append((f"🥘 Modéré ({n_ingredients} ingr.)", "#6c757d"))
+            tags.append((f"🥘 {n_ingredients}", "#6c757d"))
         else:
-            tags.append((f"👨‍🍳 Élaboré ({n_ingredients} ingr.)", "#6f42c1"))
+            tags.append((f"👨‍🍳 {n_ingredients}", "#6f42c1"))
 
-    # Calories tag (always displayed, even if 0)
+    # Calories tag - nombre seulement
     calories = int(recipe.get("calories", 0))
     tags.append((str(calories) + " kcal", "#E74C3C"))
 
-    # Vegetarian tag (displayed only if true)
+    # Vegetarian tag - emoji seulement
     if is_veg:
-        tags.append(("🌱 Végétarien", "#2ECC71"))
+        tags.append(("🌱", "#2ECC71"))
 
-    # Nutri-Score tag (always displayed)
-    tags.append(("Nutri-Score " + nutri_grade, nutri_color))
+    # Nutri-Score tag - lettre seulement
+    tags.append((nutri_grade, nutri_color))
 
     tags_html = " ".join(
         [
@@ -96,7 +96,7 @@ def render_recipe_card_mini(recipe: pd.Series) -> None:
         stars_html += "✨"
     stars_html += "☆" * empty_stars
 
-    rating_display = f'<div style="margin-top: 0.5rem; font-size: 0.9rem; color: #ffc107;">{stars_html} <span style="color: #e0e0e0;">{rating:.1f}/5 ({review_count})</span></div>'
+    rating_display = f'<div class="recipe-rating-stars" style="margin-top: 0.5rem; font-size: 0.9rem; color: #ffc107 !important;">{stars_html} <span class="recipe-rating-text" style="color: #ffffff !important;">{rating:.1f}/5 ({review_count})</span></div>'
 
     card_html = f"""
     <div style="
@@ -135,14 +135,14 @@ def render_recipe_card_mini(recipe: pd.Series) -> None:
             ">{nutri_grade}</div>
             {f'<img src="{image_url}" style="width: 100%; height: 100%; object-fit: cover;" alt="{recipe_name}" />' if image_url else '<div style="color: rgba(255,255,255,0.5); font-size: 3rem;">🍽️</div>'}
         </div>
-        <div style="background: #2c2c2c; padding: 1rem; color: white; 
+        <div class="recipe-similar-card-dark" style="background: #2c2c2c; padding: 1rem; color: white; 
                     height: 220px; flex-shrink: 0; display: flex; flex-direction: column;">
             <div style="margin-bottom: 0.7rem; min-height: 28px;">{tags_html}</div>
-            <h3 style="margin: 0 0 0.5rem 0; font-size: 1.25rem; color: white; 
+            <h3 style="margin: 0 0 0.5rem 0; font-size: 1.25rem; color: white !important; 
                        font-weight: 700; line-height: 1.3; height: 3.5rem;
                        overflow: hidden; text-overflow: ellipsis; display: -webkit-box;
                        -webkit-line-clamp: 2; -webkit-box-orient: vertical;">{display_name}</h3>
-            <p style="margin: 0; font-size: 0.85rem; color: #b0b0b0;
+            <p style="margin: 0; font-size: 0.85rem; color: #b0b0b0 !important;
                       line-height: 1.4; flex-grow: 1; overflow: hidden;">{description}</p>
             {rating_display}
         </div>
@@ -309,11 +309,11 @@ def render_recipe_detail(recipes_df: pd.DataFrame, recommender, recipe_id: int, 
             ingredients_list = (
                 ast.literal_eval(ingredients_text) if ingredients_text.startswith("[") else [ingredients_text]
             )
-            # Display ingredients as inline chips
+            # Display ingredients as inline chips - fond clair
             ingredients_html = "<div style='margin-bottom: 1.5rem;'>"
             for ingredient in ingredients_list[:20]:
                 ing_clean = str(ingredient).replace("'", "&#39;").replace('"', "&quot;")
-                ingredients_html += f"<span style='background: #3d3d3d; color: #e0e0e0; padding: 0.3rem 0.7rem; border-radius: 15px; font-size: 0.85rem; margin: 0.2rem; display: inline-block;'>{ing_clean}</span>"
+                ingredients_html += f"<span style='background: #e8e8e8; color: #2c3e50; padding: 0.3rem 0.7rem; border-radius: 15px; font-size: 0.85rem; margin: 0.2rem; display: inline-block; border: 1px solid #d0d0d0;'>{ing_clean}</span>"
             ingredients_html += "</div>"
             st.markdown(ingredients_html, unsafe_allow_html=True)
         except (ValueError, SyntaxError):
@@ -321,7 +321,7 @@ def render_recipe_detail(recipes_df: pd.DataFrame, recommender, recipe_id: int, 
     else:
         st.write("Informations d'ingrédients non disponibles")
 
-    # Section Instructions - Clean with minimal spacing
+    # Section Instructions - Style élégant comme la description
     st.markdown("### Instructions")
 
     steps_text = target_recipe.get("steps", "")
@@ -331,9 +331,11 @@ def render_recipe_detail(recipes_df: pd.DataFrame, recommender, recipe_id: int, 
             for i, step in enumerate(steps_list[:20], 1):
                 step_clean = str(step).replace("'", "&#39;").replace('"', "&quot;")
                 step_html = (
-                    f"<div style='margin-bottom: 0.5rem; padding-left: 0.5rem;'>"
-                    f"<span style='color: #667eea; font-size: 1rem; font-weight: 700; margin-right: 0.5rem;'>{i}.</span>"
-                    f"<span style='color: #1a1a1a; line-height: 1.4; font-size: 0.95rem; font-family: \"Segoe UI\", system-ui, sans-serif;'>{step_clean}</span>"
+                    f"<div style='border-left: 4px solid #667eea; padding: 1rem 1rem 1rem 1.5rem; "
+                    f"margin-bottom: 1rem; background: #f8f9fa; border-radius: 8px;'>"
+                    f"<span style='color: #667eea; font-size: 1.1rem; font-weight: 700; margin-right: 0.75rem;'>{i}.</span>"
+                    f"<span style='color: #2c3e50; line-height: 1.7; font-size: 1rem; "
+                    f'font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;\'>{step_clean}</span>'
                     f"</div>"
                 )
                 st.markdown(step_html, unsafe_allow_html=True)

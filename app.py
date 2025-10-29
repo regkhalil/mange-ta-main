@@ -140,13 +140,26 @@ def inject_global_styles() -> None:
         transform: translateY(-2px) !important;
         box-shadow: 0 4px 12px rgba(255, 75, 92, 0.4) !important;
     }
-    /* Cartes de recettes */
+    /* Cartes de recettes - hauteur uniforme */
     .recipe-card {
         transition: transform 0.2s ease, box-shadow 0.2s ease;
+        height: 100% !important;
+        display: flex !important;
+        flex-direction: column !important;
     }
     .recipe-card:hover {
         transform: translateY(-4px);
         box-shadow: 0 8px 16px rgba(0,0,0,0.2) !important;
+    }
+    /* Colonnes alignées */
+    div[data-testid="column"] {
+        display: flex !important;
+        flex-direction: column !important;
+    }
+    div[data-testid="column"] > div {
+        flex: 1 !important;
+        display: flex !important;
+        flex-direction: column !important;
     }
     </style>""",
         unsafe_allow_html=True,
@@ -514,7 +527,7 @@ def render_recipe_card_horizontal(recipe: pd.Series, recipe_id: int) -> None:
             box-shadow: 0 2px 8px rgba(0,0,0,0.3);
             margin-bottom: 1.2rem;
             transition: all 0.3s ease;
-            height: 100%;
+            min-height: 480px;
         }}
         .recipe-row-compact:hover {{
             transform: translateY(-3px);
@@ -522,7 +535,7 @@ def render_recipe_card_horizontal(recipe: pd.Series, recipe_id: int) -> None:
         }}
         .recipe-img-compact {{
             width: 100%;
-            height: 180px;
+            height: 200px;
             position: relative;
             overflow: hidden;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -772,19 +785,17 @@ def _display_recipes_grid(filtered_recipes: pd.DataFrame, total_results: int) ->
 
     display_recipes = filtered_recipes.iloc[start_idx:end_idx]
 
-    # Affichage en grille : 3 colonnes par ligne avec espacement sur les côtés
+    # Affichage en grille : 3 colonnes par ligne
     n_cols = 3
     for i in range(0, len(display_recipes), n_cols):
-        # Créer des colonnes avec espacement sur les extrémités
-        cols = st.columns([0.5, 2, 2, 2, 0.5])
+        cols = st.columns(n_cols, gap="medium")
 
         for j in range(n_cols):
             idx = i + j
             if idx < len(display_recipes):
                 recipe = display_recipes.iloc[idx]
                 recipe_id = int(recipe["id"])
-                # Utiliser les colonnes 1, 2, 3 (en sautant 0 et 4 pour l'espacement)
-                with cols[j + 1]:
+                with cols[j]:
                     render_recipe_card_horizontal(recipe, recipe_id)
 
                     if st.button(
@@ -803,40 +814,27 @@ def _display_recipes_grid(filtered_recipes: pd.DataFrame, total_results: int) ->
 
 
 def page_analyse(recipes_df: pd.DataFrame) -> None:
-    """Page d'analyse statistique des recettes."""
-    st.title("📊 Analyse des données")
-    st.markdown("**Analyse statistique des recettes**")
+    """Page d'analyse statistique des recettes - redirige vers la page dédiée."""
+    st.markdown("### 📊 Analyse Essentielle")
+    st.markdown("Découvrez les tendances et statistiques clés de notre base de données de recettes.")
+    st.markdown("---")
 
-    col1, col2, col3, col4 = st.columns(4)
-
+    col1, col2 = st.columns([2, 1])
     with col1:
-        st.metric("🍽️ Recettes totales", f"{len(recipes_df):,}")
+        st.markdown("""
+        **Contenu de l'analyse:**
+        - 📊 **Statistiques Clés** - Métriques essentielles du dataset (231K+ recettes)
+        - 📈 **Distribution des Ingrédients** - Nombre typique d'ingrédients par recette
+        - ⏱️ **Distribution des Temps** - Temps de préparation moyens et médianes
+        - ⭐ **Distribution des Avis** - Répartition des notes utilisateurs
+        - 🥧 **Répartition par Complexité** - Distribution Simple/Moyen/Complexe
+        """)
 
     with col2:
-        if "minutes" in recipes_df.columns:
-            median_time = recipes_df["minutes"].median()
-            st.metric("⏱️ Temps médian", f"{median_time:.0f} min")
+        st.info("💡 **Astuce**\n\nCette page offre une vue d'ensemble statistique complète du dataset!")
 
-    with col3:
-        if "n_ingredients" in recipes_df.columns:
-            avg_ingredients = recipes_df["n_ingredients"].mean()
-            st.metric("🥕 Ingrédients moy.", f"{avg_ingredients:.1f}")
-
-    with col4:
-        if "calories" in recipes_df.columns:
-            avg_calories = recipes_df["calories"].mean()
-            st.metric("🔥 Calories moy.", f"{avg_calories:.0f}")
-
-    st.markdown("---")
-
-    _render_distributions(recipes_df)
-    st.markdown("---")
-    _render_scatter_plot(recipes_df)
-    st.markdown("---")
-    _render_stats_table(recipes_df)
-
-    st.markdown("---")
-    st.caption("💡 Données du dataset Food.com")
+    if st.button("📊 Accéder à l'Analyse Essentielle", type="primary", use_container_width=True):
+        st.switch_page("pages/02_📊_Analyse_des_données.py")
 
 
 def _render_distributions(recipes_df: pd.DataFrame) -> None:
@@ -988,13 +986,40 @@ def main():
     inject_global_styles()
     recipes_df, recommender = initialize_app()
 
-    tab1, tab2 = st.tabs(["🔍 Recherche", "📊 Analyse"])
+    tab1, tab2, tab3 = st.tabs(["🔍 Recherche", "📊 Analyse Essentielle", "📊 Profil Nutrition"])
 
     with tab1:
         page_recherche(recipes_df, recommender)
 
     with tab2:
-        page_analyse(recipes_df)
+        # Directly redirect to the Analyse Essentielle page
+        st.switch_page("pages/02_📊_Analyse_des_données.py")
+
+    with tab3:
+        st.markdown("### 📊 Profil Nutrition")
+        st.markdown("Analyse approfondie des patterns nutritionnels et des tendances de santé.")
+        st.markdown("---")
+
+        col1, col2 = st.columns([2, 1])
+        with col1:
+            st.markdown("""
+            **Explorez les profils nutritionnels détaillés :**
+            
+            - 🎯 Distribution des grades nutritionnels (A à E)
+            - 🥗 Analyse des ingrédients sains vs malsains
+            - 🌱 Comparaison végétarien/non-végétarien
+            - ⏱️ Impact du temps de préparation sur la santé
+            - 🧩 Relation complexité-nutrition
+            - ⭐ Popularité vs qualité nutritionnelle
+            """)
+
+        with col2:
+            st.info(
+                "💡 **Astuce**\n\nUtilisez cette page pour comprendre les tendances nutritionnelles globales du dataset."
+            )
+
+        if st.button("📊 Accéder au Profil Nutrition", type="primary", use_container_width=True):
+            st.switch_page("pages/03_📊_Profil_Nutrition.py")
 
 
 if __name__ == "__main__":

@@ -2,7 +2,7 @@
 Système de recommandations basé sur une matrice de similarité pré-calculée.
 """
 
-from typing import List, Tuple, Optional, Dict, Any
+from typing import List, Tuple
 
 import pandas as pd
 import streamlit as st
@@ -56,10 +56,10 @@ class RecipeRecommender:
 
         # Get the index for this recipe
         recipe_idx = self.id_to_index[recipe_id]
-        
+
         # Get the feature vector for this recipe
         query_vec = self.combined_features[recipe_idx].reshape(1, -1)
-        
+
         # Compute cosine similarity with all recipes
         cosine_sim = cosine_similarity(query_vec, self.combined_features).flatten()
 

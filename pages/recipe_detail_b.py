@@ -9,6 +9,68 @@ from utils.recipe_detail import render_recipe_detail
 
 st.set_page_config(page_title="Détail Recette - Mangetamain", page_icon="📖", layout="wide")
 
+# Forcer le mode light partout
+st.markdown(
+    """
+<style>
+    /* Forcer le thème light */
+    :root {
+        color-scheme: light !important;
+    }
+    
+    /* Fond blanc partout */
+    body, [data-testid="stAppViewContainer"], [data-testid="stHeader"], 
+    .main, section[data-testid="stSidebar"] {
+        background-color: #ffffff !important;
+    }
+    
+    /* Masquer sidebar */
+    [data-testid="stSidebar"], [data-testid="stSidebarCollapseButton"] {
+        display: none !important;
+    }
+    
+    /* Texte noir pour TOUS les éléments */
+    *, h1, h2, h3, h4, h5, h6, p, span, div, td, th, label, li {
+        color: #000000 !important;
+    }
+    
+    /* Exception: texte blanc dans les cartes de recettes similaires (fond noir) */
+    .recipe-similar-card-dark h3 {
+        color: #ffffff !important;
+    }
+    .recipe-similar-card-dark p {
+        color: #b0b0b0 !important;
+    }
+    .recipe-similar-card-dark .recipe-rating-stars {
+        color: #ffc107 !important;
+    }
+    .recipe-similar-card-dark .recipe-rating-text {
+        color: #ffffff !important;
+    }
+    
+    /* Tables avec fond blanc */
+    table, thead, tbody, tr, td, th {
+        background-color: #ffffff !important;
+        color: #000000 !important;
+    }
+    
+    /* Markdown en noir */
+    [data-testid="stMarkdown"], [data-testid="stMarkdown"] * {
+        color: #000000 !important;
+    }
+    
+    /* Boutons avec texte blanc */
+    button[kind="secondary"], button[kind="primary"] {
+        color: #ffffff !important;
+    }
+    button p {
+        color: #ffffff !important;
+    }
+</style>
+""",
+    unsafe_allow_html=True,
+)
+
 # AUTO-REDIRECT ON PAGE REFRESH
 # Ne rediriger QUE si on n'a ni navigation flag ni recipe_id
 if "from_navigation" not in st.session_state and "recipe_id_to_view" not in st.session_state:

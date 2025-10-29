@@ -108,9 +108,9 @@ def compute_popularity_metrics(interactions_df: pd.DataFrame) -> pd.DataFrame:
     # Normalize average rating (already on 1-5 scale, convert to 0-1)
     normalized_rating = (popularity_metrics["average_rating"] - 1) / 4
 
-    # Popularity score: 70% rating weight, 30% review count weight
-    # This gives more importance to quality (rating) while still considering popularity (review count)
-    popularity_metrics["popularity_score"] = (0.7 * normalized_rating + 0.3 * normalized_review_count).round(3)
+    # Popularity score: 40% rating weight, 60% review count weight
+    # This gives more importance to popularity (review count) while still considering quality (rating)
+    popularity_metrics["popularity_score"] = (0.4 * normalized_rating + 0.6 * normalized_review_count).round(3)
 
     logger.info(f"Computed metrics for {len(popularity_metrics):,} recipes")
     logger.info(

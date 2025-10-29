@@ -38,7 +38,7 @@ KEY FEATURES:
 NUTRITIONAL GUIDELINES & DATA SOURCES:
 --------------------------------------
 Dataset: 231,637 recipes from Food.com (Kaggle)
-Format: [calories (#), total_fat (PDV), sugar (PDV), sodium (PDV), 
+Format: [calories (#), total_fat (PDV), sugar (PDV), sodium (PDV),
          protein (PDV), saturated_fat (PDV), carbohydrates (PDV)]
 
 Daily Values (DV):
@@ -174,19 +174,16 @@ HEALTHY_RANGES = {
 # Priority: saturated_fat > protein > sodium > total_fat > sugar > calories > carbs
 _NUTRIENT_WEIGHTS_RAW = {
     "saturated_fat": 0.25,  # 25% - Highest priority: Direct CVD risk (WHO/AHA)
-    "protein": 0.20,        # 20% - Essential macronutrient, muscle maintenance
-    "sodium": 0.15,         # 15% - Direct hypertension/stroke risk (WHO)
-    "total_fat": 0.13,      # 13% - Context-dependent (quality matters)
-    "sugar": 0.12,          # 12% - Indirect metabolic harm, inflammation
-    "calories": 0.10,       # 10% - Energy balance foundation
-    "carbs": 0.05,          # 5% - Quality (whole grain vs refined) matters more than quantity
+    "protein": 0.20,  # 20% - Essential macronutrient, muscle maintenance
+    "sodium": 0.15,  # 15% - Direct hypertension/stroke risk (WHO)
+    "total_fat": 0.13,  # 13% - Context-dependent (quality matters)
+    "sugar": 0.12,  # 12% - Indirect metabolic harm, inflammation
+    "calories": 0.10,  # 10% - Energy balance foundation
+    "carbs": 0.05,  # 5% - Quality (whole grain vs refined) matters more than quantity
 }
 
 # Normalize weights to ensure exact sum of 1.00
-NUTRIENT_WEIGHTS = {
-    k: v / sum(_NUTRIENT_WEIGHTS_RAW.values()) 
-    for k, v in _NUTRIENT_WEIGHTS_RAW.items()
-}
+NUTRIENT_WEIGHTS = {k: v / sum(_NUTRIENT_WEIGHTS_RAW.values()) for k, v in _NUTRIENT_WEIGHTS_RAW.items()}
 # Verified total: 1.00 (100%)
 
 
@@ -299,13 +296,13 @@ def compute_balanced_score(nutrition_list: List[float]) -> Optional[float]:
         # Base score: weighted sum of individual nutrients (0-100 points)
         # Apply evidence-based weights: sat_fat 25%, protein 20%, sodium 15%, etc.
         base_score = (
-            cal_score * NUTRIENT_WEIGHTS["calories"] +
-            protein_score * NUTRIENT_WEIGHTS["protein"] +
-            fat_score * NUTRIENT_WEIGHTS["total_fat"] +
-            sat_fat_score * NUTRIENT_WEIGHTS["saturated_fat"] +
-            sugar_score * NUTRIENT_WEIGHTS["sugar"] +
-            sodium_score * NUTRIENT_WEIGHTS["sodium"] +
-            carb_score * NUTRIENT_WEIGHTS["carbs"]
+            cal_score * NUTRIENT_WEIGHTS["calories"]
+            + protein_score * NUTRIENT_WEIGHTS["protein"]
+            + fat_score * NUTRIENT_WEIGHTS["total_fat"]
+            + sat_fat_score * NUTRIENT_WEIGHTS["saturated_fat"]
+            + sugar_score * NUTRIENT_WEIGHTS["sugar"]
+            + sodium_score * NUTRIENT_WEIGHTS["sodium"]
+            + carb_score * NUTRIENT_WEIGHTS["carbs"]
         ) * 10  # Scale to 0-100 range
 
         # Balance bonus: reward if multiple nutrients in optimal range
@@ -427,6 +424,186 @@ def assign_grade(score: float) -> Optional[str]:
 
 
 # =============================================================================
+# ANALYTICS PRECOMPUTATION FUNCTIONS
+# =============================================================================
+
+
+def extract_nutrient_columns(df: pd.DataFrame, nutrition_col: str = "nutrition") -> pd.DataFrame:
+    """
+    Extract individual nutrients from nutrition array into separate columns.
+    This eliminates the need for runtime parsing in Streamlit analytics.
+
+    Adds columns:
+        - total_fat_pdv: Total fat % daily value
+        - sugar_pdv: Sugar % daily value
+        - sodium_pdv: Sodium % daily value
+        - protein_pdv: Protein % daily value
+        - saturated_fat_pdv: Saturated fat % daily value
+        - carbs_pdv: Carbohydrates % daily value
+
+    Args:
+        df: DataFrame with nutrition column
+        nutrition_col: Name of column containing nutrition array
+
+    Returns:
+        DataFrame with added nutrient columns
+    """
+    logger.info("Extracting individual nutrient columns...")
+
+    nutrition_parsed = df[nutrition_col].apply(parse_nutrition_entry)
+
+    df["total_fat_pdv"] = nutrition_parsed.apply(lambda x: float(x[1]) if x and len(x) > 1 else None)
+    df["sugar_pdv"] = nutrition_parsed.apply(lambda x: float(x[2]) if x and len(x) > 2 else None)
+    df["sodium_pdv"] = nutrition_parsed.apply(lambda x: float(x[3]) if x and len(x) > 3 else None)
+    df["protein_pdv"] = nutrition_parsed.apply(lambda x: float(x[4]) if x and len(x) > 4 else None)
+    df["saturated_fat_pdv"] = nutrition_parsed.apply(lambda x: float(x[5]) if x and len(x) > 5 else None)
+    df["carbs_pdv"] = nutrition_parsed.apply(lambda x: float(x[6]) if x and len(x) > 6 else None)
+
+    logger.info("Individual nutrient columns extracted successfully")
+    return df
+
+
+def calculate_complexity_index(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Precompute complexity index for all recipes.
+
+    Adds columns:
+        - complexity_index: 0-100 composite score (steps 40%, ingredients 40%, time 20%)
+        - complexity_category: "Simple" (0-33), "Moyen" (34-66), or "Complexe" (67-100)
+
+    Args:
+        df: DataFrame with n_steps, n_ingredients, minutes columns
+
+    Returns:
+        DataFrame with added complexity columns
+    """
+    logger.info("Calculating complexity index...")
+
+    # Normalize each factor to 0-1 scale
+    steps_min, steps_max = df["n_steps"].min(), df["n_steps"].max()
+    ingr_min, ingr_max = df["n_ingredients"].min(), df["n_ingredients"].max()
+    time_min, time_max = df["minutes"].min(), df["minutes"].max()
+
+    df["_steps_norm"] = (df["n_steps"] - steps_min) / (steps_max - steps_min)
+    df["_ingr_norm"] = (df["n_ingredients"] - ingr_min) / (ingr_max - ingr_min)
+    df["_time_norm"] = (df["minutes"] - time_min) / (time_max - time_min)
+
+    # Weighted composite index (steps 40%, ingredients 40%, time 20%)
+    df["complexity_index"] = (df["_steps_norm"] * 0.4 + df["_ingr_norm"] * 0.4 + df["_time_norm"] * 0.2) * 100
+
+    # Categorize
+    df["complexity_category"] = pd.cut(
+        df["complexity_index"], bins=[0, 33, 66, 100], labels=["Simple", "Moyen", "Complexe"], include_lowest=True
+    )
+
+    # Drop temporary columns
+    df.drop(columns=["_steps_norm", "_ingr_norm", "_time_norm"], inplace=True)
+
+    logger.info(f"Complexity index calculated - Mean: {df['complexity_index'].mean():.1f}")
+    return df
+
+
+def calculate_time_categories(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Precompute time categories for all recipes.
+
+    Adds column:
+        - time_category: "Rapide (≤15min)", "Moyen (15-30min)", "Long (30-60min)", "Très long (>60min)"
+
+    Args:
+        df: DataFrame with minutes column
+
+    Returns:
+        DataFrame with added time_category column
+    """
+    logger.info("Calculating time categories...")
+
+    df["time_category"] = pd.cut(
+        df["minutes"],
+        bins=[0, 15, 30, 60, float("inf")],
+        labels=["Rapide (≤15min)", "Moyen (15-30min)", "Long (30-60min)", "Très long (>60min)"],
+        include_lowest=True,
+    )
+
+    category_counts = df["time_category"].value_counts()
+    logger.info(f"Time categories: {category_counts.to_dict()}")
+    return df
+
+
+def precompute_ingredient_health_index(
+    df: pd.DataFrame, output_path: str = "data/ingredient_health_index.csv", min_frequency: int = 100
+) -> pd.DataFrame:
+    """
+    Precompute ingredient health index and save as separate CSV.
+    This runs once during preprocessing and loads instantly in Streamlit.
+
+    Calculates average nutrition score for each ingredient that appears
+    in at least min_frequency recipes. Results are saved to a CSV file
+    for fast loading in the analytics dashboard.
+
+    Args:
+        df: Recipe dataframe with nutrition_score and ingredients columns
+        output_path: Path to save ingredient stats CSV
+        min_frequency: Minimum times ingredient must appear to be included
+
+    Returns:
+        DataFrame with ingredient statistics
+    """
+    logger.info(f"Precomputing ingredient health index (min_frequency={min_frequency})...")
+
+    ingredient_scores = {}
+    ingredient_counts = {}
+
+    # Parse ingredients and aggregate scores
+    for idx, row in df.iterrows():
+        try:
+            ingredients_list = ast.literal_eval(row["ingredients"])
+            score = row["nutrition_score"]
+
+            if pd.notna(score):
+                for ingredient in ingredients_list:
+                    ingredient = ingredient.strip().lower()
+                    if ingredient:
+                        if ingredient not in ingredient_scores:
+                            ingredient_scores[ingredient] = []
+                            ingredient_counts[ingredient] = 0
+                        ingredient_scores[ingredient].append(score)
+                        ingredient_counts[ingredient] += 1
+        except Exception:
+            continue
+
+    logger.info(f"Found {len(ingredient_scores)} unique ingredients")
+
+    # Calculate statistics
+    ingredient_stats = []
+    for ingredient, scores in ingredient_scores.items():
+        if ingredient_counts[ingredient] >= min_frequency:
+            scores_array = np.array(scores)
+            ingredient_stats.append(
+                {
+                    "ingredient": ingredient,
+                    "avg_score": np.mean(scores_array),
+                    "median_score": np.median(scores_array),
+                    "frequency": ingredient_counts[ingredient],
+                    "std_score": np.std(scores_array),
+                    "min_score": np.min(scores_array),
+                    "max_score": np.max(scores_array),
+                    "consistency": 1 / (np.std(scores_array) + 0.1),  # Lower std = more consistent
+                }
+            )
+
+    # Sort by average score (healthiest first)
+    ingredient_df = pd.DataFrame(ingredient_stats)
+    ingredient_df = ingredient_df.sort_values("avg_score", ascending=False)
+
+    # Save to CSV
+    ingredient_df.to_csv(output_path, index=False)
+    logger.info(f"Saved {len(ingredient_df)} ingredient stats to {output_path}")
+
+    return ingredient_df
+
+
+# =============================================================================
 # MAIN SCORING FUNCTION
 # =============================================================================
 
@@ -465,7 +642,7 @@ def score_nutrition(df: pd.DataFrame, nutrition_col: str = "nutrition") -> pd.Da
     df["nutrition_score"] = normalize_scores(raw_scores)
     df["nutrition_grade"] = df["nutrition_score"].apply(assign_grade)
 
-    # Extract calories column only
+    # Extract calories column
     logger.info("Extracting calories column from nutrition array...")
 
     def extract_calories(nutrition_value):
@@ -481,6 +658,22 @@ def score_nutrition(df: pd.DataFrame, nutrition_col: str = "nutrition") -> pd.Da
     # Log grade distribution
     grade_counts = df["nutrition_grade"].value_counts().sort_index()
     logger.info(f"Grade distribution: {grade_counts.to_dict()}")
-    logger.info("Nutrition scoring completed")
+
+    # === PRECOMPUTE ANALYTICS FOR STREAMLIT PERFORMANCE ===
+    logger.info("Precomputing analytics for Streamlit performance...")
+
+    # Extract individual nutrient columns
+    df = extract_nutrient_columns(df, nutrition_col)
+
+    # Calculate complexity metrics
+    df = calculate_complexity_index(df)
+
+    # Calculate time categories
+    df = calculate_time_categories(df)
+
+    # Precompute ingredient health index (saved separately)
+    precompute_ingredient_health_index(df, output_path="data/ingredient_health_index.csv", min_frequency=100)
+
+    logger.info("Nutrition scoring and analytics precomputation completed")
 
     return df
