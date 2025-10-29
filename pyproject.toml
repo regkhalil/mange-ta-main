@@ -40,6 +40,9 @@ Documentation = "https://github.com/regkhalil/mange-ta-main/wiki"
 dev = [
     "pre-commit>=4.3.0",
     "ruff>=0.13.2",
+    "mkdocs>=1.6.1",
+    "mkdocs-material>=9.5.29",
+    "mkdocstrings[python]>=0.25.1",
 ]
 
 [tool.ruff]

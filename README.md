@@ -57,6 +57,20 @@ tests/               # Pytest-based checks for data loading logic
 
 The `make dev` workflow installs dependencies, prepares datasets, and serves the Streamlit UI for rapid iteration.
 
+## Documentation
+
+- **Serve with live reload**: `make docs-serve`
+- **Build static site**: `make docs-build`
+- **Docstring integration**: Pages under `docs/reference/` use `mkdocstrings` to render APIs straight from Python docstrings.
+
+The generated site lives in the `site/` folder after a build and can be published to any static host (GitHub Pages, Cloudflare Pages, etc.).
+
+### Continuous delivery to GitHub Pages
+
+- The workflow in `.github/workflows/docs.yml` builds the MkDocs site and deploys it to GitHub Pages whenever documentation or API modules change on `main`.
+- Enable GitHub Pages once in repository settings: `Settings → Pages → Build and deployment → GitHub Actions`.
+- After the first successful run, the docs are served from `https://regkhalil.github.io/mange-ta-main/`.
+
 ## Make targets
 
 - `make dev`: Install dependencies, preprocess data, and launch the app.
@@ -64,6 +78,7 @@ The `make dev` workflow installs dependencies, prepares datasets, and serves the
 - `make preprocess`: Execute the preprocessing pipeline only.
 - `make test`: Launch the pytest suite in `tests/`.
 - `make lint` / `make format`: Apply Ruff linting and formatting fixes.
+- `make docs-build` / `make docs-serve`: Build or serve MkDocs documentation.
 - `make clean`: Remove generated data, logs, and caches.
 
 ## Testing and quality

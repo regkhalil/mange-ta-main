@@ -1,6 +1,6 @@
 # Makefile for mange-ta-main project
 
-.PHONY: preprocess clean help install test lint lint-check format format-check fix requirements
+.PHONY: preprocess clean help install test lint lint-check format format-check fix requirements docs-build docs-serve
 
 # Default target
 help:
@@ -17,6 +17,8 @@ help:
 	@echo "  clean         - Clean generated files (data, logs, __pycache__)"
 	@echo "  install       - Install project dependencies"
 	@echo "  test          - Run tests (if available)"
+	@echo "  docs-build    - Build the MkDocs site"
+	@echo "  docs-serve    - Serve MkDocs with live reload"
 	@echo "  help          - Show this help message"
 
 # Run preprocessing pipeline
@@ -64,3 +66,9 @@ start:
 
 dev: install preprocess start
 	@echo "Development environment ready"
+
+docs-build:
+	uv run mkdocs build
+
+docs-serve:
+	uv run mkdocs serve -a 0.0.0.0:8000
