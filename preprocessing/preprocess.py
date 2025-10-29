@@ -168,6 +168,9 @@ def main() -> None:
     #   - 'calories': Extracted first value from nutrition array for direct access
     #                 Avoids parsing the array on every recipe card display (~12 per page)
     #                 Trade-off: ~100KB extra disk space for significantly faster runtime performance
+    #
+    # Individual nutrient columns (total_fat_pdv, sugar_pdv, etc.) are extracted for analytics performance
+    # Complexity and time category columns are precomputed for Streamlit dashboard speed
     df_preprocessed = df_final[
         [
             "name_cleaned",
@@ -184,6 +187,15 @@ def main() -> None:
             "nutrition_grade",
             "is_vegetarian",
             "calories",
+            "total_fat_pdv",
+            "sugar_pdv",
+            "sodium_pdv",
+            "protein_pdv",
+            "saturated_fat_pdv",
+            "carbs_pdv",
+            "complexity_index",
+            "complexity_category",
+            "time_category",
             "review_count",
             "average_rating",
             "popularity_score",
@@ -206,6 +218,15 @@ def main() -> None:
         "nutrition_grade",
         "is_vegetarian",
         "calories",
+        "total_fat_pdv",
+        "sugar_pdv",
+        "sodium_pdv",
+        "protein_pdv",
+        "saturated_fat_pdv",
+        "carbs_pdv",
+        "complexity_index",
+        "complexity_category",
+        "time_category",
         "review_count",
         "average_rating",
         "popularity_score",
@@ -227,7 +248,7 @@ def main() -> None:
         # Step 1: Delete all existing files from Google Drive
         logger.info("Step 1: Cleaning up previous deployment files...")
         delete_success = gdrive_uploader.delete_all_files_in_folder()
-        
+
         if not delete_success:
             logger.warning("Warning: Some files could not be deleted from Google Drive")
             logger.info("Continuing with upload...")

@@ -999,13 +999,39 @@ def main():
     inject_global_styles()
     recipes_df, recommender = initialize_app()
 
-    tab1, tab2 = st.tabs(["🔍 Recherche", "📊 Analyse"])
+    tab1, tab2, tab3 = st.tabs(["🔍 Recherche", "📊 Analyse", "📊 Profil Nutrition"])
 
     with tab1:
         page_recherche(recipes_df, recommender)
 
     with tab2:
         page_analyse(recipes_df)
+
+    with tab3:
+        st.markdown("### 📊 Profil Nutrition")
+        st.markdown("Analyse approfondie des patterns nutritionnels et des tendances de santé.")
+        st.markdown("---")
+
+        col1, col2 = st.columns([2, 1])
+        with col1:
+            st.markdown("""
+            **Explorez les profils nutritionnels détaillés :**
+            
+            - 🎯 Distribution des grades nutritionnels (A à E)
+            - 🥗 Analyse des ingrédients sains vs malsains
+            - 🌱 Comparaison végétarien/non-végétarien
+            - ⏱️ Impact du temps de préparation sur la santé
+            - 🧩 Relation complexité-nutrition
+            - ⭐ Popularité vs qualité nutritionnelle
+            """)
+
+        with col2:
+            st.info(
+                "💡 **Astuce**\n\nUtilisez cette page pour comprendre les tendances nutritionnelles globales du dataset."
+            )
+
+        if st.button("📊 Accéder au Profil Nutrition", type="primary", use_container_width=True):
+            st.switch_page("pages/03_📊_Profil_Nutrition.py")
 
 
 if __name__ == "__main__":
