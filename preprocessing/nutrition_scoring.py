@@ -1,84 +1,94 @@
 # nutrition_scoring.py
 """
-IMPROVED Nutrition Scoring Module - Weighted Balance Score
-===========================================================
+Evidence-Based Nutrition Scoring Module - Weighted Balance Score
+=================================================================
 
-ISSUE WITH v1 (nutrition_scoring.py):
--------------------------------------
-The original scoring algorithm had a critical flaw where protein rewards were unlimited,
-causing recipes with extremely high protein (100-150g) to receive A-grades despite being
-nutritionally imbalanced (e.g., high in saturated fat, sodium, or calories).
+SCORING ALGORITHM OVERVIEW:
+---------------------------
+This module implements a scientifically-grounded nutrition scoring system based on
+WHO, USDA, AHA, and EFSA dietary guidelines. The algorithm prioritizes nutrients with
+the strongest evidence for health impacts.
 
-Example problematic scores:
-- "1 00 Tangy Chicken" (Score: 92.1, Grade: A): 148g protein, 93g fat, 86g sat fat
-- "French Onion Soup" (Score: 81.7, Grade: A): 1269 calories, 88g sat fat, 70g sugar
-- These received high scores purely due to protein, ignoring serious nutritional concerns
+KEY FEATURES:
+-------------
+1. **Evidence-Based Weighting**: Nutrients weighted by health impact
+   - Saturated Fat: 25% (highest - direct CVD risk, WHO/AHA #1 priority)
+   - Protein: 20% (essential macronutrient, muscle maintenance)
+   - Sodium: 15% (direct hypertension/stroke risk)
+   - Total Fat: 13% (context-dependent, quality matters)
+   - Sugar: 12% (indirect metabolic harm, inflammation)
+   - Calories: 10% (energy balance foundation)
+   - Carbs: 5% (lowest - quality matters more than quantity)
 
-v2 IMPROVEMENTS:
-----------------
-1. **Healthy Ranges**: Define nutritionally sound ranges for each nutrient based on:
-   - USDA Dietary Guidelines 2020-2025
-   - FDA Daily Values (scaled per serving, assuming ~3 meals/day)
-   - Dataset distribution analysis (231,637 recipes)
+2. **Corrected %DV Units**: All nutrients use Percent Daily Value format
+   - Fixes critical unit errors from previous version
+   - Sodium optimal: 0-20% DV (was incorrectly 0-600% DV!)
+   - Protein, fat, sugar, carbs: All converted from grams to %DV
+   - Calories remain in kcal (not %DV)
 
-2. **Capped Rewards**: Protein and other nutrients have diminishing returns after "adequate" levels
-   - Prevents extreme values from dominating the score
-   - Rewards balance over excess
+3. **Healthy Ranges**: WHO/USDA/AHA/EFSA evidence-based optimal ranges
+   - Optimal range: Maximum 10/10 score + balance bonus (+2 points)
+   - Acceptable range: Gradual decay 5-10/10 score
+   - Extreme outliers: Extra penalties (e.g., sodium >50% DV)
 
-3. **Balance Penalty**: Penalizes recipes that are imbalanced (e.g., very high in one nutrient)
-   - Encourages well-rounded nutritional profiles
-
-4. **Transparent Scoring**: Each component is clearly documented and tunable
+4. **Balance Bonus**: Rewards nutritionally well-rounded recipes
+   - +2 points per nutrient in optimal range (max +14 points)
+   - Encourages multi-nutrient balance, not single-nutrient optimization
 
 NUTRITIONAL GUIDELINES & DATA SOURCES:
 --------------------------------------
-Based on analysis of 231,637 recipes from Food.com dataset and USDA guidelines:
+Dataset: 231,637 recipes from Food.com (Kaggle)
+Format: [calories (#), total_fat (PDV), sugar (PDV), sodium (PDV), 
+         protein (PDV), saturated_fat (PDV), carbohydrates (PDV)]
 
-Dataset Distribution (Percentiles):
-                    25th    50th    75th    90th    Mean
-CALORIES           174.4   313.4   519.7   843.6   473.9
-PROTEIN (g)          7.0    18.0    51.0    83.0    34.7
-FAT (g)              8.0    20.0    41.0    73.0    36.1
-SAT_FAT (g)          7.0    23.0    52.0    98.0    45.6  (NOTE: High!)
-SUGAR (g)            9.0    25.0    68.0   160.0    84.3  (NOTE: High!)
-SODIUM (% DV)        5.0    14.0    33.0    61.0    30.1
-CARBS (g)            4.0     9.0    16.0    28.0    15.6
-
-USDA Daily Values (per 2000 calorie diet):
-- Protein: 50g (10-35% of calories)
-- Total Fat: 78g (<30% of calories)
-- Saturated Fat: 20g (<10% of calories)
+Daily Values (DV):
+- Protein: 50g | Total Fat: 78g | Saturated Fat: 20g | Sugar: 50g
+- Sodium: 2300mg | Carbohydrates: 275g | Calories: 2000kcal
 - Sugar: 50g added sugars (<10% of calories)
 - Sodium: 2300mg
 - Carbohydrates: 275g (45-65% of calories)
 
-Per-Serving Targets (assuming 3 meals/day):
-- Calories: 300-600 (balanced meal)
-- Protein: 15-35g (adequate), cap rewards at 50g
-- Fat: 5-25g (healthy range)
-- Saturated Fat: 0-7g (⅓ of daily limit)
-- Sugar: 0-15g (natural sugars acceptable)
-- Sodium: 0-600mg (⅓ of daily limit)
-- Carbs: 20-60g (balanced)
+Optimal Ranges per Meal (assuming ~3 meals/day):
+- Calories: 150-600 kcal (substantial meal size)
+- Protein: 30-70% DV (15-35g per meal)
+- Total Fat: 6-32% DV (5-25g per meal)
+- Saturated Fat: 0-35% DV (0-7g per meal, <10% kcal - AHA)
+- Sugar: 0-30% DV (0-15g per meal, <10% kcal - WHO)
+- Sodium: 0-20% DV (0-460mg per meal, <2000mg/day - WHO)
+- Carbohydrates: 7-22% DV (20-60g per meal, 45-65% kcal)
+
+Extreme Penalty Thresholds (WHO/EFSA safety limits):
+- Calories: >1000 kcal (~50% of daily intake)
+- Protein: >150% DV (>75g, kidney stress risk)
+- Total Fat: >70% DV (>55g, exceeds WHO <30% kcal)
+- Saturated Fat: >100% DV (>20g/day, atherogenic - AHA)
+- Sugar: >80% DV (>40g, exceeds WHO <10% kcal)
+- Sodium: >50% DV (>1150mg, hypertension risk - WHO)
+- Carbohydrates: >50% DV (>135g, glycemic spike risk)
 
 SCORING ALGORITHM:
 ------------------
-Final Score = Base (50) + Nutrient Points + Balance Bonus - Penalties
+Final Score = (Weighted Base Score × 10) + Balance Bonus - Penalties
 
-1. Nutrient Points (max +40):
-   - Each nutrient scored on whether it falls in healthy range
-   - Protein capped at 50g to prevent dominance
-   - Diminishing returns for exceeding "adequate" levels
+1. Weighted Base Score (0-10 points per nutrient):
+   - Each nutrient scored 0-10 based on optimal/acceptable ranges
+   - Scores weighted by health impact (sat_fat 25%, protein 20%, etc.)
+   - Total weighted sum: 0-100 points after scaling
 
-2. Balance Bonus (max +10):
-   - Rewards recipes where ALL nutrients are in healthy ranges
-   - Encourages well-rounded nutrition
+2. Balance Bonus (max +10 points):
+   - +2 points per nutrient in optimal range (capped at +10)
+   - Rewards well-rounded nutritional profiles
 
-3. Penalties (max -40):
-   - Excess calories, sat fat, sugar, sodium penalized
-   - Imbalance penalty for extreme nutrient ratios
+3. Extreme Penalties (max -30 points):
+   - Additional penalties for dangerously high levels
+   - Based on WHO/EFSA safety thresholds
 
-Score is then normalized to 10-98 scale and assigned A-E grades.
+Score is normalized to 10-98 scale and assigned A-E grades:
+- A (85-98): Excellent nutrition
+- B (70-84): Good nutrition
+- C (55-69): Acceptable
+- D (40-54): Poor
+- E (10-39): Very poor
 
 USAGE:
 ------
@@ -112,51 +122,72 @@ logger = logging.getLogger(__name__)
 # =============================================================================
 
 HEALTHY_RANGES = {
-    # Format: (min_optimal, max_optimal, max_acceptable)
-    # Sources documented in module docstring
+    # All nutrients in %DV (Percent Daily Value) EXCEPT calories (kcal)
+    # Daily Values: Protein 50g, Total Fat 78g, Sat Fat 20g, Sugar 50g,
+    #               Sodium 2300mg, Carbs 275g, Calories 2000kcal
+    # Based on WHO, USDA, AHA, and EFSA recommendations
     "calories": {
-        "min_optimal": 150,  # Minimum for substantial meal
-        "max_optimal": 600,  # Healthy meal size (⅓ of 2000 cal/day)
-        "max_acceptable": 800,  # Upper bound before penalty
-        "description": "Based on 300-600 cal per meal for balanced diet",
+        "min_optimal": 150,  # kcal - Minimum for substantial meal
+        "max_optimal": 600,  # kcal - Healthy meal size (~⅓ of 2000 cal/day)
+        "max_acceptable": 800,  # kcal - Upper bound before penalty
+        "description": "Based on 300-600 kcal per meal for balanced diet (USDA)",
     },
     "protein": {
-        "min_optimal": 15,  # Adequate protein per meal
-        "max_optimal": 35,  # Optimal range for muscle maintenance
-        "max_acceptable": 50,  # Cap rewards here (⅓ of 50g daily)
-        "description": "USDA recommends 50g/day, 15-35g per meal is adequate",
+        "min_optimal": 30,  # %DV - 15g ÷ 50g DV = 30%
+        "max_optimal": 70,  # %DV - 35g ÷ 50g DV = 70%
+        "max_acceptable": 100,  # %DV - 50g ÷ 50g DV = 100%
+        "description": "USDA recommends 50g/day, 30-70% DV (15-35g) per meal",
     },
-    "fat": {
-        "min_optimal": 5,  # Minimum for nutrient absorption
-        "max_optimal": 25,  # Healthy fat per meal
-        "max_acceptable": 40,  # Upper bound (dataset 75th %ile: 41g)
-        "description": "USDA recommends <78g/day total fat",
+    "total_fat": {
+        "min_optimal": 6,  # %DV - 5g ÷ 78g DV = 6%
+        "max_optimal": 32,  # %DV - 25g ÷ 78g DV = 32%
+        "max_acceptable": 51,  # %DV - 40g ÷ 78g DV = 51%
+        "description": "WHO recommends <30% kcal from fat, 6-32% DV (5-25g) per meal",
     },
     "saturated_fat": {
-        "min_optimal": 0,  # Lower is better
-        "max_optimal": 7,  # ⅓ of 20g daily limit
-        "max_acceptable": 15,  # Dataset 50th %ile is 23g (too high!)
-        "description": "USDA limit: 20g/day, aim for <7g per meal",
+        "min_optimal": 0,  # %DV - Lower is always better
+        "max_optimal": 35,  # %DV - 7g ÷ 20g DV = 35%
+        "max_acceptable": 75,  # %DV - 15g ÷ 20g DV = 75%
+        "description": "AHA limit: 20g/day (<10% kcal), 0-35% DV (0-7g) per meal",
     },
     "sugar": {
-        "min_optimal": 0,  # Lower is better
-        "max_optimal": 15,  # Natural sugars acceptable
-        "max_acceptable": 30,  # Dataset 50th %ile is 25g
-        "description": "USDA recommends <50g added sugar/day",
+        "min_optimal": 0,  # %DV - Lower is always better
+        "max_optimal": 30,  # %DV - 15g ÷ 50g DV = 30%
+        "max_acceptable": 60,  # %DV - 30g ÷ 50g DV = 60%
+        "description": "WHO recommends <10% kcal from sugar, 0-30% DV (0-15g) per meal",
     },
     "sodium": {
-        "min_optimal": 0,  # Lower is better
-        "max_optimal": 600,  # ⅓ of 2300mg daily limit (in % DV units)
-        "max_acceptable": 1000,  # ~40% DV
-        "description": "USDA limit: 2300mg/day, aim for <600mg per meal",
+        "min_optimal": 0,  # %DV - Lower is always better
+        "max_optimal": 20,  # %DV - 460mg ÷ 2300mg DV = 20%
+        "max_acceptable": 35,  # %DV - 805mg ÷ 2300mg DV = 35%
+        "description": "WHO limit: <2000mg/day, 0-20% DV (0-460mg) per meal",
     },
     "carbs": {
-        "min_optimal": 20,  # Minimum for energy
-        "max_optimal": 60,  # Balanced carb intake
-        "max_acceptable": 100,  # ⅓ of 275g daily
-        "description": "USDA recommends 275g/day (45-65% of calories)",
+        "min_optimal": 7,  # %DV - 20g ÷ 275g DV = 7%
+        "max_optimal": 22,  # %DV - 60g ÷ 275g DV = 22%
+        "max_acceptable": 36,  # %DV - 100g ÷ 275g DV = 36%
+        "description": "USDA recommends 275g/day (45-65% kcal), 7-22% DV (20-60g) per meal",
     },
 }
+
+# Nutrient importance weights based on WHO, AHA, and EFSA evidence
+# Priority: saturated_fat > protein > sodium > total_fat > sugar > calories > carbs
+_NUTRIENT_WEIGHTS_RAW = {
+    "saturated_fat": 0.25,  # 25% - Highest priority: Direct CVD risk (WHO/AHA)
+    "protein": 0.20,        # 20% - Essential macronutrient, muscle maintenance
+    "sodium": 0.15,         # 15% - Direct hypertension/stroke risk (WHO)
+    "total_fat": 0.13,      # 13% - Context-dependent (quality matters)
+    "sugar": 0.12,          # 12% - Indirect metabolic harm, inflammation
+    "calories": 0.10,       # 10% - Energy balance foundation
+    "carbs": 0.05,          # 5% - Quality (whole grain vs refined) matters more than quantity
+}
+
+# Normalize weights to ensure exact sum of 1.00
+NUTRIENT_WEIGHTS = {
+    k: v / sum(_NUTRIENT_WEIGHTS_RAW.values()) 
+    for k, v in _NUTRIENT_WEIGHTS_RAW.items()
+}
+# Verified total: 1.00 (100%)
 
 
 # =============================================================================
@@ -250,21 +281,30 @@ def compute_balanced_score(nutrition_list: List[float]) -> Optional[float]:
         # Score each nutrient component (0-10 points each, max 70 total)
         cal_score = score_nutrient_in_range(calories, "calories")
         protein_score = score_nutrient_in_range(protein, "protein")
-        fat_score = score_nutrient_in_range(total_fat, "fat")
+        fat_score = score_nutrient_in_range(total_fat, "total_fat")
         sat_fat_score = score_nutrient_in_range(saturated_fat, "saturated_fat")
         sugar_score = score_nutrient_in_range(sugar, "sugar")
         sodium_score = score_nutrient_in_range(sodium, "sodium")
         carb_score = score_nutrient_in_range(carbohydrates, "carbs")
 
-        # Base score: sum of individual nutrients
-        base_score = cal_score + protein_score + fat_score + sat_fat_score + sugar_score + sodium_score + carb_score
+        # Base score: weighted sum of individual nutrients (0-100 points)
+        # Apply evidence-based weights: sat_fat 25%, protein 20%, sodium 15%, etc.
+        base_score = (
+            cal_score * NUTRIENT_WEIGHTS["calories"] +
+            protein_score * NUTRIENT_WEIGHTS["protein"] +
+            fat_score * NUTRIENT_WEIGHTS["total_fat"] +
+            sat_fat_score * NUTRIENT_WEIGHTS["saturated_fat"] +
+            sugar_score * NUTRIENT_WEIGHTS["sugar"] +
+            sodium_score * NUTRIENT_WEIGHTS["sodium"] +
+            carb_score * NUTRIENT_WEIGHTS["carbs"]
+        ) * 10  # Scale to 0-100 range
 
         # Balance bonus: reward if multiple nutrients in optimal range
         in_optimal_count = sum(
             [
                 HEALTHY_RANGES["calories"]["min_optimal"] <= calories <= HEALTHY_RANGES["calories"]["max_optimal"],
                 HEALTHY_RANGES["protein"]["min_optimal"] <= protein <= HEALTHY_RANGES["protein"]["max_optimal"],
-                HEALTHY_RANGES["fat"]["min_optimal"] <= total_fat <= HEALTHY_RANGES["fat"]["max_optimal"],
+                HEALTHY_RANGES["total_fat"]["min_optimal"] <= total_fat <= HEALTHY_RANGES["total_fat"]["max_optimal"],
                 saturated_fat <= HEALTHY_RANGES["saturated_fat"]["max_optimal"],
                 sugar <= HEALTHY_RANGES["sugar"]["max_optimal"],
                 sodium <= HEALTHY_RANGES["sodium"]["max_optimal"],
@@ -272,33 +312,48 @@ def compute_balanced_score(nutrition_list: List[float]) -> Optional[float]:
             ]
         )
 
-        # Bonus: +2 points per nutrient in optimal range (max +14)
-        balance_bonus = in_optimal_count * 2.0
+        # Bonus: +2 points per nutrient in optimal range (max +10 to prevent over-inflation)
+        balance_bonus = min(in_optimal_count * 2.0, 10.0)
 
-        # Imbalance penalty: heavily penalize extreme outliers
+        # Imbalance penalty: heavily penalize extreme outliers based on WHO/EFSA thresholds
         penalties = 0.0
 
-        # Extreme calorie penalty
+        # Extreme calorie penalty (>1000 kcal = ~50% of daily intake)
         if calories > 1000:
             penalties += (calories - 1000) * 0.01
 
-        # Extreme saturated fat penalty (major health concern)
-        if saturated_fat > 20:
-            penalties += (saturated_fat - 20) * 0.5
+        # Extreme protein penalty (>150% DV = >75g, can stress kidneys - EFSA)
+        if protein > 150:  # 150% DV
+            penalties += (protein - 150) * 0.3
 
-        # Extreme sugar penalty
-        if sugar > 50:
-            penalties += (sugar - 50) * 0.2
+        # Extreme total fat penalty (>70% DV = >55g/meal, exceeds WHO <30% kcal)
+        if total_fat > 70:  # 70% DV
+            penalties += (total_fat - 70) * 0.2
 
-        # Extreme sodium penalty
-        if sodium > 50:  # 50% DV
+        # Extreme saturated fat penalty (>100% DV = >20g/day, atherogenic - AHA)
+        if saturated_fat > 100:  # 100% DV (was 20g, now corrected)
+            penalties += (saturated_fat - 100) * 0.5
+
+        # Extreme sugar penalty (>80% DV = >40g, exceeds WHO <10% kcal)
+        if sugar > 80:  # 80% DV (was 50g, now corrected)
+            penalties += (sugar - 80) * 0.2
+
+        # Extreme sodium penalty (>50% DV = >1150mg, strongly linked to hypertension - WHO)
+        if sodium > 50:  # 50% DV (already correct)
             penalties += (sodium - 50) * 0.3
+
+        # Extreme carbs penalty (>50% DV = >135g, excess glycemic load - EFSA)
+        if carbohydrates > 50:  # 50% DV
+            penalties += (carbohydrates - 50) * 0.15
 
         # Cap total penalty
         penalties = min(penalties, 30.0)
 
-        # Final score
+        # Final score (clamped to reasonable range before normalization)
+        # Base (0-100) + Bonus (0-10) - Penalties (0-30) = theoretical range [-20, 110]
+        # Clamp to [0, 110] to ensure normalization works correctly
         final_score = base_score + balance_bonus - penalties
+        final_score = max(0.0, min(final_score, 110.0))
 
         return final_score
 
@@ -328,6 +383,8 @@ def normalize_scores(raw_scores: pd.Series, min_val: float = 10, max_val: float 
             return np.nan
         x_clamped = max(min(x, p99), p1)
         scaled = min_val + (x_clamped - p1) * ((max_val - min_val) / (p99 - p1))
+        # Hard boundary enforcement: ensure score is strictly within [10, 98]
+        scaled = max(min_val, min(scaled, max_val))
         return round(scaled, 2)
 
     normalized = raw_scores.apply(scale)
@@ -340,21 +397,21 @@ def assign_grade(score: float) -> Optional[str]:
     Assign letter grade based on normalized score.
 
     Grade Ranges:
-    - A (80-100): Excellent nutrition
-    - B (60-80): Good nutrition
-    - C (40-60): Fair nutrition
-    - D (20-40): Poor nutrition
-    - E (10-20): Very poor nutrition
+    - A (85-98): Excellent nutrition
+    - B (70-84): Good nutrition
+    - C (55-69): Acceptable
+    - D (40-54): Poor
+    - E (10-39): Very poor nutrition
     """
     if pd.isna(score):
         return None
-    elif score >= 80:
+    elif score >= 85:
         return "A"
-    elif score >= 60:
+    elif score >= 70:
         return "B"
-    elif score >= 40:
+    elif score >= 55:
         return "C"
-    elif score >= 20:
+    elif score >= 40:
         return "D"
     else:
         return "E"

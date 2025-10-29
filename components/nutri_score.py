@@ -9,15 +9,15 @@ def get_nutri_grade(nutrition_score: float) -> str:
     """
     Convertit un score nutritionnel en grade (A, B, C, D, E).
 
-    Le Nutri-Score utilise une échelle de 0-100 où:
-    - A (vert): 0-40
-    - B (vert clair): 41-55
-    - C (jaune): 56-70
-    - D (orange): 71-80
-    - E (rouge): 81-100
+    Le Nutri-Score utilise une échelle de 10-98 où:
+    - A (vert): 85-98 - Excellente nutrition
+    - B (vert clair): 70-84 - Bonne nutrition
+    - C (jaune): 55-69 - Acceptable
+    - D (orange): 40-54 - Pauvre
+    - E (rouge): 10-39 - Très pauvre
 
     Args:
-        nutrition_score: Score nutritionnel (0-100)
+        nutrition_score: Score nutritionnel (10-98)
 
     Returns:
         str: Grade (A, B, C, D, E)
@@ -27,13 +27,13 @@ def get_nutri_grade(nutrition_score: float) -> str:
 
     score = float(nutrition_score)
 
-    if score <= 40:
+    if score >= 85:
         return "A"
-    elif score <= 55:
+    elif score >= 70:
         return "B"
-    elif score <= 70:
+    elif score >= 55:
         return "C"
-    elif score <= 80:
+    elif score >= 40:
         return "D"
     else:
         return "E"
