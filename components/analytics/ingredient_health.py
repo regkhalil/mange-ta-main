@@ -63,6 +63,10 @@ def calculate_ingredient_health_index(df: pd.DataFrame, min_frequency: int = 100
             "max_score": float,
         },
     )
+    
+    # DEFENSIVE FIX: Force frequency to int64 in case CSV was cached with old dtype
+    # This handles production environments with cached old CSV files
+    stats_df["frequency"] = pd.to_numeric(stats_df["frequency"], errors="coerce").fillna(0).astype("int64")
 
     # Clean and format ingredient names for display
     stats_df["ingredient"] = stats_df["ingredient"].str.strip().str.title()
