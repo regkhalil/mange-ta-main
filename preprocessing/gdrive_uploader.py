@@ -385,37 +385,71 @@ def upload_file_to_drive(file_path: str, file_name: Optional[str] = None, mime_t
 
 def upload_preprocessed_recipes_only(data_dir: str) -> bool:
     """
-    Uploads only the preprocessed_recipes.csv file to Google Drive.
+    Uploads only the preprocessed_recipes.csv and similarity_matrix.pkl files to Google Drive.
 
     Args:
-        data_dir: Directory containing the preprocessed_recipes.csv file
+        data_dir: Directory containing the files to upload
 
     Returns:
-        True if upload succeeded, False otherwise
+        True if all uploads succeeded, False otherwise
     """
-    # Path to the specific file we want to upload
-    preprocessed_file = Path(data_dir) / "preprocessed_recipes.csv"
+    # Files to upload
+    files_to_upload = [
+        ("preprocessed_recipes.csv", "text/csv"),
+        ("similarity_matrix.pkl", "application/octet-stream")
+    ]
     
-    if not preprocessed_file.exists():
-        logger.error(f"Preprocessed recipes file not found: {preprocessed_file}")
+    data_path = Path(data_dir)
+    
+    # Check if all files exist
+    missing_files = []
+    for filename, _ in files_to_upload:
+        file_path = data_path / filename
+        if not file_path.exists():
+            missing_files.append(filename)
+    
+    if missing_files:
+        logger.error(f"Required files not found: {', '.join(missing_files)}")
         return False
 
     logger.info("=" * 70)
-    logger.info("Uploading preprocessed_recipes.csv to Google Drive")
+    logger.info("Uploading essential preprocessing files to Google Drive")
     logger.info("=" * 70)
 
-    file_size = os.path.getsize(preprocessed_file)
-    file_size_mb = file_size / (1024 * 1024)
-    logger.info(f"File size: {file_size_mb:.1f} MB")
+    success = True
+    uploaded_files = []
+    failed_files = []
 
-    file_id = upload_file_to_drive(str(preprocessed_file), "preprocessed_recipes.csv", "text/csv")
+    for filename, mime_type in files_to_upload:
+        file_path = data_path / filename
+        file_size = os.path.getsize(file_path)
+        file_size_mb = file_size / (1024 * 1024)
+        
+        logger.info(f"\nUploading: {filename} ({file_size_mb:.1f} MB)")
+        file_id = upload_file_to_drive(str(file_path), filename, mime_type)
+        
+        if file_id:
+            uploaded_files.append(filename)
+            logger.info(f"✓ Successfully uploaded: {filename}")
+        else:
+            failed_files.append(filename)
+            logger.error(f"✗ Failed to upload: {filename}")
+            success = False
+
+    logger.info("\n" + "=" * 50)
+    logger.info(f"Upload summary: {len(uploaded_files)}/{len(files_to_upload)} files uploaded")
     
-    if file_id:
-        logger.info("✓ Successfully uploaded preprocessed_recipes.csv")
-        return True
-    else:
-        logger.error("✗ Failed to upload preprocessed_recipes.csv")
-        return False
+    if uploaded_files:
+        logger.info("Successfully uploaded:")
+        for filename in uploaded_files:
+            logger.info(f"  ✓ {filename}")
+    
+    if failed_files:
+        logger.info("Failed uploads:")
+        for filename in failed_files:
+            logger.info(f"  ✗ {filename}")
+
+    return success
 
 
 def upload_preprocessing_outputs(data_dir: str) -> bool:

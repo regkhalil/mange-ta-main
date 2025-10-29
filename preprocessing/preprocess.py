@@ -232,14 +232,14 @@ def main() -> None:
             logger.warning("Warning: Some files could not be deleted from Google Drive")
             logger.info("Continuing with upload...")
 
-        # Step 2: Upload only the preprocessed_recipes.csv file
-        logger.info("\nStep 2: Uploading preprocessed_recipes.csv...")
+        # Step 2: Upload only the essential files (preprocessed_recipes.csv and similarity_matrix.pkl)
+        logger.info("\nStep 2: Uploading essential preprocessing files...")
         upload_success = gdrive_uploader.upload_preprocessed_recipes_only(local_data_dir)
 
         if upload_success:
-            logger.info("\n✓ Deployment successful - preprocessed_recipes.csv uploaded to Google Drive")
+            logger.info("\n✓ Deployment successful - essential files uploaded to Google Drive")
         else:
-            logger.error("\n✗ Deployment failed - could not upload preprocessed_recipes.csv")
+            logger.error("\n✗ Deployment failed - could not upload essential files")
             exit(1)
     else:
         logger.info("\nDeploy mode disabled - files saved locally only")

@@ -259,26 +259,6 @@ def read_csv_file(
     return df
 
 
-@st.cache_data(hash_funcs={list: lambda x: str(x)})
-def read_raw_interactions(data_dir: Optional[str] = None, usecols: Optional[List[str]] = None) -> pd.DataFrame:
-    """
-    Loads the RAW_interactions.csv file.
-
-    Args:
-        data_dir: Directory containing the data
-        usecols: Specific columns to load (e.g., ["recipe_id", "rating"])
-
-    Returns:
-        pd.DataFrame: User-recipe interactions
-    """
-    dtype_dict = (
-        {"recipe_id": "int64", "rating": "float32"}
-        if usecols is None or set(usecols) & {"recipe_id", "rating"}
-        else None
-    )
-
-    return read_csv_file("RAW_interactions.csv", data_dir=data_dir, usecols=usecols, dtype=dtype_dict)
-
 
 # ============================================================================
 # EXISTING FUNCTIONS (UPDATED TO USE THE NEW CENTRALIZED FUNCTIONS)
@@ -321,7 +301,6 @@ def load_recipes(data_dir: str = None) -> pd.DataFrame:
     # are already computed in preprocessing - no need to calculate here
     # Average rating can be added as a separate function when needed
 
-    return df
 
 
 def get_recipe_name(recipe_id: int, recipes_df: pd.DataFrame) -> str:
