@@ -23,6 +23,7 @@ dependencies = [
     "nltk>=3.8.1",
     "pandas>=2.3.3",
     "plotly>=5.17.0",
+    "psutil>=7.1.2",
     "pytest>=8.4.2",
     "pytest-cov>=7.0.0",
     "python-dotenv>=1.0.0",

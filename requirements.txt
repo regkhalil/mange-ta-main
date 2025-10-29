@@ -132,6 +132,8 @@ protobuf==6.32.1
     #   googleapis-common-protos
     #   proto-plus
     #   streamlit
+psutil==7.1.2
+    # via mange-ta-main
 pyarrow==21.0.0
     # via streamlit
 pyasn1==0.6.1
