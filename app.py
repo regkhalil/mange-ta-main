@@ -814,40 +814,27 @@ def _display_recipes_grid(filtered_recipes: pd.DataFrame, total_results: int) ->
 
 
 def page_analyse(recipes_df: pd.DataFrame) -> None:
-    """Page d'analyse statistique des recettes."""
-    st.title("📊 Analyse des données")
-    st.markdown("**Analyse statistique des recettes**")
+    """Page d'analyse statistique des recettes - redirige vers la page dédiée."""
+    st.markdown("### 📊 Analyse Essentielle")
+    st.markdown("Découvrez les tendances et statistiques clés de notre base de données de recettes.")
+    st.markdown("---")
 
-    col1, col2, col3, col4 = st.columns(4)
-
+    col1, col2 = st.columns([2, 1])
     with col1:
-        st.metric("🍽️ Recettes totales", f"{len(recipes_df):,}")
+        st.markdown("""
+        **Contenu de l'analyse:**
+        - 📊 **Statistiques Clés** - Métriques essentielles du dataset (231K+ recettes)
+        - 📈 **Distribution des Ingrédients** - Nombre typique d'ingrédients par recette
+        - ⏱️ **Distribution des Temps** - Temps de préparation moyens et médianes
+        - ⭐ **Distribution des Avis** - Répartition des notes utilisateurs
+        - 🥧 **Répartition par Complexité** - Distribution Simple/Moyen/Complexe
+        """)
 
     with col2:
-        if "minutes" in recipes_df.columns:
-            median_time = recipes_df["minutes"].median()
-            st.metric("⏱️ Temps médian", f"{median_time:.0f} min")
+        st.info("💡 **Astuce**\n\nCette page offre une vue d'ensemble statistique complète du dataset!")
 
-    with col3:
-        if "n_ingredients" in recipes_df.columns:
-            avg_ingredients = recipes_df["n_ingredients"].mean()
-            st.metric("🥕 Ingrédients moy.", f"{avg_ingredients:.1f}")
-
-    with col4:
-        if "calories" in recipes_df.columns:
-            avg_calories = recipes_df["calories"].mean()
-            st.metric("🔥 Calories moy.", f"{avg_calories:.0f}")
-
-    st.markdown("---")
-
-    _render_distributions(recipes_df)
-    st.markdown("---")
-    _render_scatter_plot(recipes_df)
-    st.markdown("---")
-    _render_stats_table(recipes_df)
-
-    st.markdown("---")
-    st.caption("💡 Données du dataset Food.com")
+    if st.button("📊 Accéder à l'Analyse Essentielle", type="primary", use_container_width=True):
+        st.switch_page("pages/02_📊_Analyse_des_données.py")
 
 
 def _render_distributions(recipes_df: pd.DataFrame) -> None:
@@ -999,13 +986,14 @@ def main():
     inject_global_styles()
     recipes_df, recommender = initialize_app()
 
-    tab1, tab2, tab3 = st.tabs(["🔍 Recherche", "📊 Analyse", "📊 Profil Nutrition"])
+    tab1, tab2, tab3 = st.tabs(["🔍 Recherche", "📊 Analyse Essentielle", "📊 Profil Nutrition"])
 
     with tab1:
         page_recherche(recipes_df, recommender)
 
     with tab2:
-        page_analyse(recipes_df)
+        # Directly redirect to the Analyse Essentielle page
+        st.switch_page("pages/02_📊_Analyse_des_données.py")
 
     with tab3:
         st.markdown("### 📊 Profil Nutrition")
