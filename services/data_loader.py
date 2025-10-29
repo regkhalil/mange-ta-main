@@ -313,24 +313,7 @@ def load_recipes(data_dir: str = None) -> pd.DataFrame:
     )
 
     # Verify that popularity columns exist
-    required_popularity_cols = ["review_count", "average_rating", "popularity_score"]
-    missing_cols = [col for col in required_popularity_cols if col not in df.columns]
-
-    if missing_cols:
-        logger.warning(f"Colonnes de popularité manquantes: {missing_cols}")
-        logger.warning("Utilisation de valeurs par défaut pour la popularité")
-        # Add default values if columns are missing
-        for col in missing_cols:
-            if col == "review_count":
-                df[col] = 0
-            elif col == "average_rating":
-                df[col] = 3.0
-            elif col == "popularity_score":
-                df[col] = 0.0
-    else:
-        logger.info(f"Données de popularité chargées pour {len(df)} recettes")
-        recipes_with_reviews = df[df["review_count"] > 0]
-        logger.info(f"Recettes avec avis: {len(recipes_with_reviews)} ({len(recipes_with_reviews)/len(df)*100:.1f}%)")
+    # required_popularity_cols = ["review_count", "average_rating", "popularity_score"]
 
     return df
 

@@ -383,6 +383,41 @@ def upload_file_to_drive(file_path: str, file_name: Optional[str] = None, mime_t
         return None
 
 
+def upload_preprocessed_recipes_only(data_dir: str) -> bool:
+    """
+    Uploads only the preprocessed_recipes.csv file to Google Drive.
+
+    Args:
+        data_dir: Directory containing the preprocessed_recipes.csv file
+
+    Returns:
+        True if upload succeeded, False otherwise
+    """
+    # Path to the specific file we want to upload
+    preprocessed_file = Path(data_dir) / "preprocessed_recipes.csv"
+    
+    if not preprocessed_file.exists():
+        logger.error(f"Preprocessed recipes file not found: {preprocessed_file}")
+        return False
+
+    logger.info("=" * 70)
+    logger.info("Uploading preprocessed_recipes.csv to Google Drive")
+    logger.info("=" * 70)
+
+    file_size = os.path.getsize(preprocessed_file)
+    file_size_mb = file_size / (1024 * 1024)
+    logger.info(f"File size: {file_size_mb:.1f} MB")
+
+    file_id = upload_file_to_drive(str(preprocessed_file), "preprocessed_recipes.csv", "text/csv")
+    
+    if file_id:
+        logger.info("✓ Successfully uploaded preprocessed_recipes.csv")
+        return True
+    else:
+        logger.error("✗ Failed to upload preprocessed_recipes.csv")
+        return False
+
+
 def upload_preprocessing_outputs(data_dir: str) -> bool:
     """
     Uploads all files from the data directory to Google Drive.
@@ -460,6 +495,75 @@ def upload_preprocessing_outputs(data_dir: str) -> bool:
             logger.info(f"  ✗ {file_name}")
 
     return success
+
+
+def delete_all_files_in_folder(service=None) -> bool:
+    """
+    Deletes all files in the app's Google Drive folder.
+
+    Args:
+        service: Optional authenticated Drive API service
+
+    Returns:
+        True if all files were deleted successfully, False otherwise
+    """
+    try:
+        if service is None:
+            creds = get_oauth_credentials()
+            if not creds:
+                logger.error("Failed to get OAuth credentials for deletion")
+                return False
+            service = build("drive", "v3", credentials=creds)
+
+        # Get the folder ID
+        folder_id = get_or_create_folder(service)
+        if not folder_id:
+            logger.error("Failed to get folder ID for deletion")
+            return False
+
+        # List all files in the folder
+        query = f"'{folder_id}' in parents and trashed=false"
+        results = service.files().list(q=query, fields="files(id, name)").execute()
+        files = results.get("files", [])
+
+        if not files:
+            logger.info("No files found in Google Drive folder - nothing to delete")
+            return True
+
+        logger.info(f"Found {len(files)} files to delete from Google Drive")
+        
+        success = True
+        deleted_files = []
+        failed_files = []
+
+        for file in files:
+            file_id = file.get("id")
+            file_name = file.get("name")
+            
+            try:
+                service.files().delete(fileId=file_id).execute()
+                deleted_files.append(file_name)
+                logger.info(f"  ✓ Deleted: {file_name}")
+            except HttpError as error:
+                failed_files.append(file_name)
+                logger.error(f"  ✗ Failed to delete: {file_name} - {error}")
+                success = False
+
+        logger.info(f"Deletion complete: {len(deleted_files)}/{len(files)} files deleted")
+        
+        if failed_files:
+            logger.warning("Failed to delete the following files:")
+            for file_name in failed_files:
+                logger.warning(f"  ✗ {file_name}")
+
+        return success
+
+    except HttpError as error:
+        logger.error(f"Error during file deletion: {error}")
+        return False
+    except Exception as e:
+        logger.error(f"Unexpected error during file deletion: {e}")
+        return False
 
 
 def list_drive_files(service=None) -> List[dict]:

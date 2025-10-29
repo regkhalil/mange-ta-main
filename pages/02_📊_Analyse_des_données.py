@@ -8,35 +8,32 @@ sur les recettes et les interactions utilisateurs.
 # Importer les fonctions centralisées de chargement de données
 import sys
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import List, Optional
 
-import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from services.data_loader import load_recipes, read_raw_interactions
+from services.data_loader import load_recipes
 
 # Configuration de la page
 st.set_page_config(page_title="Analyse des données", page_icon="📊", layout="wide")
 
 
 @st.cache_data
-def load_data() -> Tuple[Optional[pd.DataFrame], Optional[pd.DataFrame]]:
+def load_data() -> Optional[pd.DataFrame]:
     """
-    Charge les données des recettes et des interactions depuis les fichiers CSV.
+    Charge les données des recettes depuis les fichiers CSV.
     Utilise les fonctions centralisées du module data_loader.
 
     Returns:
-        Tuple[Optional[pd.DataFrame], Optional[pd.DataFrame]]:
-        (recipes_df, interactions_df) ou (None, None) si erreur
+        Optional[pd.DataFrame]: DataFrame des recettes ou None si erreur
     """
     try:
         # Utiliser les fonctions centralisées
         recipes_df = load_recipes()
-        interactions_df = read_raw_interactions()
 
         # Nettoyer et convertir les colonnes numériques
         numeric_cols = [
@@ -59,50 +56,15 @@ def load_data() -> Tuple[Optional[pd.DataFrame], Optional[pd.DataFrame]]:
         # Supprimer les doublons
         recipes_df = recipes_df.drop_duplicates(subset=["id"])
 
-        # Nettoyer les interactions (déjà chargé par read_raw_interactions)
-        interactions_df["rating"] = pd.to_numeric(interactions_df["rating"], errors="coerce")
-        interactions_df = interactions_df.dropna(subset=["recipe_id", "user_id"])
-
-        return recipes_df, interactions_df
+        return recipes_df
 
     except FileNotFoundError as e:
         st.error(f"❌ Fichier introuvable: {e}")
-        st.info(
-            "💡 Assurez-vous que les fichiers preprocessed_recipes.csv et RAW_interactions.csv sont dans le dossier data/"
-        )
-        return None, None
+        st.info("💡 Assurez-vous que le fichier preprocessed_recipes.csv est dans le dossier data/")
+        return None
     except Exception as e:
         st.error(f"❌ Erreur lors du chargement des données: {str(e)}")
-        return None, None
-
-
-def compute_avg_rating(recipes_df: pd.DataFrame, interactions_df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Calcule la note moyenne pour chaque recette à partir des interactions.
-
-    Args:
-        recipes_df: DataFrame des recettes
-        interactions_df: DataFrame des interactions
-
-    Returns:
-        pd.DataFrame: Recettes avec la colonne avg_rating ajoutée
-    """
-    # Filtrer les ratings valides (1-5)
-    valid_ratings = interactions_df[(interactions_df["rating"] >= 1) & (interactions_df["rating"] <= 5)].copy()
-
-    # Calculer les statistiques par recette
-    rating_stats = valid_ratings.groupby("recipe_id").agg({"rating": ["mean", "count"]}).reset_index()
-
-    rating_stats.columns = ["id", "avg_rating", "rating_count"]
-
-    # Joindre avec les recettes
-    recipes_with_ratings = recipes_df.merge(rating_stats, on="id", how="left")
-
-    # Remplir les valeurs manquantes
-    recipes_with_ratings["avg_rating"] = recipes_with_ratings["avg_rating"].fillna(np.nan)
-    recipes_with_ratings["rating_count"] = recipes_with_ratings["rating_count"].fillna(0).astype(int)
-
-    return recipes_with_ratings
+        return None
 
 
 def parse_tags(recipes_df: pd.DataFrame) -> List[str]:
@@ -339,66 +301,6 @@ def create_correlation_heatmap(df: pd.DataFrame) -> go.Figure:
     return fig
 
 
-def create_user_activity_charts(interactions_df: pd.DataFrame) -> Tuple[go.Figure, go.Figure]:
-    """Crée les charts d'activité utilisateurs."""
-    # Chart 1: Top 10 users par nombre d'interactions
-    user_counts = interactions_df.groupby("user_id").size().nlargest(10).reset_index()
-    user_counts.columns = ["user_id", "count"]
-
-    fig1 = go.Figure(
-        data=[
-            go.Bar(
-                x=user_counts["user_id"].astype(str),
-                y=user_counts["count"],
-                marker_color="#667eea",
-                text=user_counts["count"],
-                textposition="auto",
-            )
-        ]
-    )
-
-    fig1.update_layout(
-        title="Top 10 utilisateurs par nombre d'interactions",
-        xaxis_title="User ID",
-        yaxis_title="Nombre d'interactions",
-        template="plotly_dark",
-    )
-
-    # Chart 2: Note moyenne donnée par ces utilisateurs
-    top_users = user_counts["user_id"].tolist()
-    user_avg_rating = (
-        interactions_df[
-            (interactions_df["user_id"].isin(top_users))
-            & (interactions_df["rating"] >= 1)
-            & (interactions_df["rating"] <= 5)
-        ]
-        .groupby("user_id")["rating"]
-        .mean()
-        .reset_index()
-    )
-
-    fig2 = go.Figure(
-        data=[
-            go.Bar(
-                x=user_avg_rating["user_id"].astype(str),
-                y=user_avg_rating["rating"],
-                marker_color="#f093fb",
-                text=user_avg_rating["rating"].round(2),
-                textposition="auto",
-            )
-        ]
-    )
-
-    fig2.update_layout(
-        title="Note moyenne donnée par les top utilisateurs",
-        xaxis_title="User ID",
-        yaxis_title="Note moyenne",
-        template="plotly_dark",
-    )
-
-    return fig1, fig2
-
-
 def main():
     """Fonction principale de la page d'analyse."""
 
@@ -407,15 +309,11 @@ def main():
 
     # Charger les données avec spinner
     with st.spinner("Chargement des données..."):
-        recipes_df, interactions_df = load_data()
+        recipes_df = load_data()
 
     # Vérifier si les données sont chargées
-    if recipes_df is None or interactions_df is None:
+    if recipes_df is None:
         st.stop()
-
-    # Calculer les notes moyennes
-    with st.spinner("Calcul des statistiques..."):
-        recipes_df = compute_avg_rating(recipes_df, interactions_df)
 
     # Pas de filtres supplémentaires - utiliser toutes les recettes
     filtered_df = recipes_df
@@ -495,19 +393,6 @@ def main():
         st.plotly_chart(fig, use_container_width=True)
 
     st.markdown("---")
-
-    # Chart 5: Activité utilisateurs (dans des onglets)
-    st.subheader("👥 Activité des utilisateurs")
-
-    tab1, tab2 = st.tabs(["📊 Nombre d'interactions", "⭐ Notes moyennes"])
-
-    fig1, fig2 = create_user_activity_charts(interactions_df)
-
-    with tab1:
-        st.plotly_chart(fig1, use_container_width=True)
-
-    with tab2:
-        st.plotly_chart(fig2, use_container_width=True)
 
     # Footer
     st.markdown("---")

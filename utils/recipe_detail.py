@@ -86,6 +86,7 @@ def render_recipe_card_mini(recipe: pd.Series) -> None:
             pass
 
     rating = float(recipe.get("average_rating", 4.0))
+    review_count = int(recipe.get("review_count", 0))
     full_stars = int(rating)
     half_star = 1 if (rating - full_stars) >= 0.5 else 0
     empty_stars = 5 - full_stars - half_star
@@ -95,7 +96,7 @@ def render_recipe_card_mini(recipe: pd.Series) -> None:
         stars_html += "✨"
     stars_html += "☆" * empty_stars
 
-    rating_display = f'<div style="margin-top: 0.5rem; font-size: 0.9rem; color: #ffc107;">{stars_html} <span style="color: #e0e0e0;">{rating:.1f}/5</span></div>'
+    rating_display = f'<div style="margin-top: 0.5rem; font-size: 0.9rem; color: #ffc107;">{stars_html} <span style="color: #e0e0e0;">{rating:.1f}/5 ({review_count})</span></div>'
 
     card_html = f"""
     <div style="

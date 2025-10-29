@@ -1,9 +1,13 @@
 repos:
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.6.9
+  - repo: local
     hooks:
-      - id: ruff
-      - id: ruff-format
+      - id: make-fix
+        name: Run make fix (ruff linting and formatting)
+        entry: make fix
+        language: system
+        types: [python]
+        pass_filenames: false
+        stages: [commit]
 
   # Auto-update requirements.txt when pyproject.toml changes
   - repo: local

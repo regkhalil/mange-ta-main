@@ -347,6 +347,7 @@ def render_recipe_card(recipe: pd.Series, recipe_id: int) -> None:
 
         # Rating
         rating = float(recipe.get("average_rating", 4.0))
+        review_count = int(recipe.get("review_count", 0))
         full_stars = int(rating)
         half_star = (rating - full_stars) >= 0.5
         empty_stars = 5 - full_stars - int(half_star)
@@ -354,7 +355,7 @@ def render_recipe_card(recipe: pd.Series, recipe_id: int) -> None:
         stars_html = "⭐" * full_stars + ("✨" if half_star else "") + "☆" * empty_stars
         rating_display = (  # noqa: E501
             f'<div style="margin-top: 0.5rem; font-size: 0.9rem; color: #ffc107;">'
-            f'{stars_html} <span style="color: #e0e0e0;">{rating:.1f}/5</span></div>'
+            f'{stars_html} <span style="color: #e0e0e0;">{rating:.1f}/5 ({review_count})</span></div>'
         )
 
         # Carte HTML
@@ -495,6 +496,7 @@ def render_recipe_card_horizontal(recipe: pd.Series, recipe_id: int) -> None:
 
         # Rating
         rating = float(recipe.get("average_rating", 4.0))
+        review_count = int(recipe.get("review_count", 0))
         full_stars = int(rating)
         half_star = (rating - full_stars) >= 0.5
         empty_stars = 5 - full_stars - int(half_star)
@@ -624,7 +626,7 @@ def render_recipe_card_horizontal(recipe: pd.Series, recipe_id: int) -> None:
                 </div>
                 <div class="recipe-meta-compact">
                     <div class="rating-stars-compact" style="margin-left: 0;">
-                        {stars_html} <span style="color: #e0e0e0; margin-left: 0.15rem;">{rating:.1f}</span>
+                        {stars_html} <span style="color: #e0e0e0; margin-left: 0.15rem;">{rating:.1f} ({review_count})</span>
                     </div>
                 </div>
             </div>

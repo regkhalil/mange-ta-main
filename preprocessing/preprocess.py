@@ -18,6 +18,7 @@ import nutrition_scoring
 import prepare_similarity_matrix
 import prepare_vege_recipes
 import preprocess_utils
+from compute_popularity import compute_popularity_metrics, load_interactions
 from recipe_descriptions_hybrid import enhance_recipe_descriptions
 from text_cleaner import clean_recipe_data
 
@@ -120,10 +121,46 @@ def main() -> None:
         df_enhanced, clean_name=True, clean_description=True, clean_steps=True, clean_tags=True, clean_ingredients=True
     )
 
+    # Compute popularity metrics from interactions
+    logger.info("Computing popularity metrics from user interactions...")
+    try:
+        interactions_df = load_interactions(local_data_dir)
+        popularity_df = compute_popularity_metrics(interactions_df)
+
+        # Merge popularity data with recipes (left join to keep all recipes)
+        logger.info("Merging popularity data with recipes...")
+        df_with_popularity = df_cleaned.merge(popularity_df.rename(columns={"recipe_id": "id"}), on="id", how="left")
+
+        # Fill missing values for recipes without interactions
+        df_with_popularity["review_count"] = df_with_popularity["review_count"].fillna(0).astype("int32")
+        df_with_popularity["average_rating"] = df_with_popularity["average_rating"].fillna(3.0).astype("float32")
+        df_with_popularity["popularity_score"] = df_with_popularity["popularity_score"].fillna(0.0).astype("float32")
+
+        recipes_with_reviews = df_with_popularity[df_with_popularity["review_count"] > 0]
+        logger.info(f"Enhanced {len(df_with_popularity):,} recipes with popularity data")
+        logger.info(
+            f"Recipes with reviews: {len(recipes_with_reviews):,} ({len(recipes_with_reviews) / len(df_with_popularity) * 100:.1f}%)"
+        )
+        logger.info(
+            f"Recipes without reviews (using defaults): {len(df_with_popularity) - len(recipes_with_reviews):,}"
+        )
+
+        df_final = df_with_popularity
+
+    except Exception as e:
+        logger.warning(f"Failed to compute popularity metrics: {e}")
+        logger.warning("Continuing without popularity data - columns will be added with default values")
+
+        # Add default popularity columns if computation fails
+        df_cleaned["review_count"] = 0
+        df_cleaned["average_rating"] = 3.0
+        df_cleaned["popularity_score"] = 0.0
+        df_final = df_cleaned
+
     # Remove unneeded columns and store the final dataframe in a csv
     logger.info("Selecting relevant columns for the final preprocessed DataFrame.")
 
-    # Only select the cleaned columns and other needed columns
+    # Only select the cleaned columns and other needed columns including popularity metrics
     # Drop original unmodified columns (name, description, steps, tags, ingredients)
     # Note: We keep both 'nutrition' (full array) and 'calories' (extracted) because:
     #   - 'nutrition': Complete nutritional data [calories, fat, sugar, sodium, protein, sat_fat, carbs]
@@ -131,7 +168,7 @@ def main() -> None:
     #   - 'calories': Extracted first value from nutrition array for direct access
     #                 Avoids parsing the array on every recipe card display (~12 per page)
     #                 Trade-off: ~100KB extra disk space for significantly faster runtime performance
-    df_preprocessed = df_cleaned[
+    df_preprocessed = df_final[
         [
             "name_cleaned",
             "id",
@@ -147,6 +184,9 @@ def main() -> None:
             "nutrition_grade",
             "is_vegetarian",
             "calories",
+            "review_count",
+            "average_rating",
+            "popularity_score",
         ]
     ].copy()
 
@@ -166,6 +206,9 @@ def main() -> None:
         "nutrition_grade",
         "is_vegetarian",
         "calories",
+        "review_count",
+        "average_rating",
+        "popularity_score",
     ]
 
     logger.info(f"Final DataFrame shape: {df_preprocessed.shape}")
@@ -181,12 +224,22 @@ def main() -> None:
         logger.info("Deploy mode enabled - uploading to Google Drive")
         logger.info("=" * 70)
 
-        success = gdrive_uploader.upload_preprocessing_outputs(local_data_dir)
+        # Step 1: Delete all existing files from Google Drive
+        logger.info("Step 1: Cleaning up previous deployment files...")
+        delete_success = gdrive_uploader.delete_all_files_in_folder()
+        
+        if not delete_success:
+            logger.warning("Warning: Some files could not be deleted from Google Drive")
+            logger.info("Continuing with upload...")
 
-        if success:
-            logger.info("\n✓ Deployment successful - all files uploaded to Google Drive")
+        # Step 2: Upload only the preprocessed_recipes.csv file
+        logger.info("\nStep 2: Uploading preprocessed_recipes.csv...")
+        upload_success = gdrive_uploader.upload_preprocessed_recipes_only(local_data_dir)
+
+        if upload_success:
+            logger.info("\n✓ Deployment successful - preprocessed_recipes.csv uploaded to Google Drive")
         else:
-            logger.error("\n✗ Deployment failed - some files could not be uploaded")
+            logger.error("\n✗ Deployment failed - could not upload preprocessed_recipes.csv")
             exit(1)
     else:
         logger.info("\nDeploy mode disabled - files saved locally only")
