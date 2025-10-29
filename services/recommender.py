@@ -1,17 +1,18 @@
 """
-Système de recommandations basé sur TF-IDF et similarité cosinus.
+Système de recommandations basé sur une matrice de similarité pré-calculée.
 """
 
-from typing import List, Tuple
+from typing import List, Tuple, Optional, Dict, Any
 
 import pandas as pd
 import streamlit as st
-from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
+
+from .data_loader import read_pickle_file
 
 
 class RecipeRecommender:
-    """Système de recommandations de recettes utilisant TF-IDF."""
+    """Système de recommandations de recettes utilisant une matrice de similarité pré-calculée."""
 
     def __init__(self, recipes_df: pd.DataFrame):
         """
@@ -21,40 +22,25 @@ class RecipeRecommender:
             recipes_df: DataFrame contenant les recettes
         """
         self.recipes_df = recipes_df
-        self.vectorizer = None
-        self.tfidf_matrix = None
+        self.similarity_data = None
+        self.id_to_index = None
+        self.index_to_id = None
+        self.combined_features = None
         self._build_index()
 
     def _build_index(self):
-        """Construit l'index TF-IDF à partir des recettes (OPTIMISÉ)."""
-        # Créer un document texte pour chaque recette
-        # Utilise les colonnes disponibles selon le format des données
-
-        # Optimisation: Vectoriser l'opération au lieu de boucler
-        if "ingredient_tokens" in self.recipes_df.columns:
-            # Anciennes données avec tokens
-            self.recipes_df["_combined_text"] = (
-                self.recipes_df["ingredient_tokens"].astype(str)
-                + " "
-                + self.recipes_df["steps_tokens"].astype(str)
-                + " "
-                + self.recipes_df["techniques"].astype(str)
-            )
-            documents = self.recipes_df["_combined_text"].tolist()
-        else:
-            # Nouvelles données avec textes
-            self.recipes_df["_combined_text"] = (
-                self.recipes_df.get("ingredients", "").astype(str) + " " + self.recipes_df.get("steps", "").astype(str)
-            )
-            documents = self.recipes_df["_combined_text"].tolist()
-
-        # Créer la matrice TF-IDF (limiter max_features pour performance)
-        self.vectorizer = TfidfVectorizer(max_features=500, min_df=2, max_df=0.8)
-        self.tfidf_matrix = self.vectorizer.fit_transform(documents)
+        """Charge la matrice de similarité pré-calculée."""
+        # Load pre-computed similarity matrix (required)
+        self.similarity_data = read_pickle_file("similarity_matrix.pkl")
+        self.id_to_index = self.similarity_data["id_to_index"]
+        self.index_to_id = self.similarity_data["index_to_id"]
+        self.combined_features = self.similarity_data["combined_features"]
+        print("✅ Loaded pre-computed similarity matrix successfully")
 
     def get_similar_recipes(self, recipe_id: int, k: int = 10) -> List[Tuple[pd.Series, float]]:
         """
         Trouve les k recettes les plus similaires à une recette donnée.
+        Utilise uniquement la matrice de similarité pré-calculée.
 
         Args:
             recipe_id: ID de la recette de référence
@@ -63,25 +49,33 @@ class RecipeRecommender:
         Returns:
             Liste de tuples (recette, score de similarité)
         """
-        # Trouver l'index de la recette
-        idx = self.recipes_df[self.recipes_df["id"] == recipe_id].index
-        if len(idx) == 0:
+        # Check if recipe_id exists in our mapping
+        if recipe_id not in self.id_to_index:
+            print(f"⚠️ Recipe ID {recipe_id} not found in similarity matrix")
             return []
 
-        idx = idx[0]
+        # Get the index for this recipe
+        recipe_idx = self.id_to_index[recipe_id]
+        
+        # Get the feature vector for this recipe
+        query_vec = self.combined_features[recipe_idx].reshape(1, -1)
+        
+        # Compute cosine similarity with all recipes
+        cosine_sim = cosine_similarity(query_vec, self.combined_features).flatten()
 
-        # Calculer la similarité cosinus
-        cosine_sim = cosine_similarity(self.tfidf_matrix[idx : idx + 1], self.tfidf_matrix).flatten()
-
-        # Obtenir les indices des k+1 recettes les plus similaires (excluant la recette elle-même)
+        # Get the indices of the k+1 most similar recipes (excluding self)
         similar_indices = cosine_sim.argsort()[::-1][1 : k + 1]
 
-        # Retourner les recettes et leurs scores
+        # Convert indices back to recipe IDs and get recipe data
         results = []
         for sim_idx in similar_indices:
-            recipe = self.recipes_df.iloc[sim_idx]
-            score = cosine_sim[sim_idx]
-            results.append((recipe, score))
+            similar_recipe_id = self.index_to_id[sim_idx]
+            # Find the recipe in our DataFrame
+            recipe_row = self.recipes_df[self.recipes_df["id"] == similar_recipe_id]
+            if not recipe_row.empty:
+                recipe = recipe_row.iloc[0]
+                score = cosine_sim[sim_idx]
+                results.append((recipe, score))
 
         return results
 

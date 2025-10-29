@@ -7,9 +7,10 @@ All loading functions use standardized paths and consistent parameters.
 
 import io
 import logging
+import pickle
 import sys
 from pathlib import Path
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 import pandas as pd
 import streamlit as st
@@ -257,6 +258,61 @@ def read_csv_file(
 
     df = pd.read_csv(file_path, **read_params)
     return df
+
+
+@st.cache_data(hash_funcs={Dict: lambda x: str(sorted(x.keys()))})
+def read_pickle_file(
+    filename: str,
+    data_dir: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Centralized function to read any pickle file from the data/ folder.
+    In production mode (ENV=prod), reads from Google Drive.
+    In development mode, reads from local data/ directory.
+
+    This function standardizes pickle reading with error handling
+    and integrated Streamlit caching.
+
+    Args:
+        filename: Name of the pickle file (e.g., "similarity_matrix.pkl")
+        data_dir: Directory containing the data (default: "data/")
+
+    Returns:
+        Dict[str, Any]: Dictionary containing the pickled data
+
+    Raises:
+        FileNotFoundError: If the file does not exist
+    """
+
+    logger.info(f"Reading pickle file {filename}")
+
+    # Production mode: read from Google Drive (required)
+    if IS_PRODUCTION:
+        file_content = _download_file_from_gdrive(filename)
+
+        if file_content is None:
+            raise FileNotFoundError(
+                f"Failed to download {filename} from Google Drive. "
+                "Ensure Google Drive credentials are configured correctly."
+            )
+
+        # Successfully downloaded from Google Drive
+        data = pickle.loads(file_content)
+        logger.info(f"Successfully loaded pickle data from {filename}")
+        return data
+
+    # Development mode: read from local file system
+    data_path = _get_data_dir(data_dir)
+    file_path = data_path / filename
+
+    if not file_path.exists():
+        raise FileNotFoundError(f"File not found: {file_path}")
+
+    with open(file_path, 'rb') as f:
+        data = pickle.load(f)
+    
+    logger.info(f"Successfully loaded pickle data from {file_path}")
+    return data
 
 
 
