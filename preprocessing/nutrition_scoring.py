@@ -594,6 +594,10 @@ def precompute_ingredient_health_index(
 
     # Sort by average score (healthiest first)
     ingredient_df = pd.DataFrame(ingredient_stats)
+    
+    # Convert frequency to int immediately after creating DataFrame
+    ingredient_df["frequency"] = ingredient_df["frequency"].astype("int64")
+    
     ingredient_df = ingredient_df.sort_values("avg_score", ascending=False)
 
     # Ensure proper dtypes before saving to CSV
