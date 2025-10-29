@@ -647,9 +647,13 @@ def page_recherche(recipes_df: pd.DataFrame, recommender) -> None:
         st.session_state.current_page = 1
 
     header_html = (
-        "<div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); "
+        "<div style='position: relative; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); "
         "padding: 3rem 2rem; border-radius: 15px; margin-bottom: 2rem; text-align: center; "
         "color: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1);'>"
+        "<a href='https://regkhalil.github.io/mange-ta-main' target='_blank' "
+        "style='position: absolute; top: 1.5rem; right: 2rem; background: rgba(255,255,255,0.15); "
+        "padding: 0.45rem 1rem; border-radius: 999px; color: white; font-weight: 600; font-size: 0.95rem; "
+        "text-decoration: none; transition: background 0.2s ease;'>📘 Documentation</a>"
         "<h1 style='font-size: 2.5rem; margin-bottom: 0.5rem; font-weight: 700;'>"
         "🍽️ Découvrez nos meilleures recettes "
         "</h1>"
