@@ -992,8 +992,27 @@ def main():
         page_recherche(recipes_df, recommender)
 
     with tab2:
-        # Directly redirect to the Analyse Essentielle page
-        st.switch_page("pages/02_📊_Analyse_des_données.py")
+        st.markdown("### 📊 Analyse Essentielle")
+        st.markdown("Découvrez les statistiques et visualisations clés du dataset Food.com.")
+        st.markdown("---")
+
+        col1, col2 = st.columns([2, 1])
+        with col1:
+            st.markdown("""
+            **Découvrez les métriques essentielles :**
+            
+            - � Statistiques clés (temps, scores, notes)
+            - 🥘 Distribution des ingrédients
+            - ⏱️ Distribution des temps de préparation
+            - ⭐ Distribution des évaluations
+            - 🧩 Répartition par complexité
+            """)
+
+        with col2:
+            st.info("💡 **Info**\n\nVue d'ensemble rapide avec 4 visualisations principales.")
+
+        if st.button("� Accéder à l'Analyse Essentielle", type="primary", use_container_width=True):
+            st.switch_page("pages/02_📊_Analyse_Essentielle.py")
 
     with tab3:
         st.markdown("### 📊 Profil Nutrition")

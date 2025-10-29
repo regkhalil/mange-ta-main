@@ -596,6 +596,20 @@ def precompute_ingredient_health_index(
     ingredient_df = pd.DataFrame(ingredient_stats)
     ingredient_df = ingredient_df.sort_values("avg_score", ascending=False)
 
+    # Ensure proper dtypes before saving to CSV
+    ingredient_df = ingredient_df.astype(
+        {
+            "ingredient": str,
+            "avg_score": "float64",
+            "median_score": "float64",
+            "frequency": "int64",
+            "std_score": "float64",
+            "min_score": "float64",
+            "max_score": "float64",
+            "consistency": "float64",
+        }
+    )
+
     # Save to CSV
     ingredient_df.to_csv(output_path, index=False)
     logger.info(f"Saved {len(ingredient_df)} ingredient stats to {output_path}")
