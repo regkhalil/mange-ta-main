@@ -19,7 +19,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from services.data_loader import load_recipes
 
 # Configuration de la page
-st.set_page_config(page_title="Analyse des données", page_icon="📊", layout="wide")
+st.set_page_config(page_title="Analyse Essentielle", page_icon="📊", layout="wide")
 
 
 @st.cache_data
@@ -577,7 +577,7 @@ def filter_outliers_for_overview(df: pd.DataFrame) -> pd.DataFrame:
 def main():
     """Fonction principale de la page d'analyse."""
 
-    st.title("📊 Analyse des Données")
+    st.title("📊 Analyse Essentielle")
 
     # Introduction Section
     st.markdown("""
