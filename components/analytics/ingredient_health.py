@@ -52,7 +52,17 @@ def calculate_ingredient_health_index(df: pd.DataFrame, min_frequency: int = 100
         logger.error(f"Precomputed ingredient health index not found at {csv_path}")
         return pd.DataFrame(columns=["ingredient", "avg_score", "frequency", "std_score", "min_score", "max_score"])
 
-    stats_df = pd.read_csv(csv_path)
+    stats_df = pd.read_csv(
+        csv_path,
+        dtype={
+            "ingredient": str,
+            "avg_score": float,
+            "frequency": int,
+            "std_score": float,
+            "min_score": float,
+            "max_score": float,
+        },
+    )
 
     # Clean and format ingredient names for display
     stats_df["ingredient"] = stats_df["ingredient"].str.strip().str.title()
