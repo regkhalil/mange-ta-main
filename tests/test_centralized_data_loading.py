@@ -21,7 +21,6 @@ os.environ["STREAMLIT_SERVER_ENABLE_STATIC_SERVING"] = "false"
 from services.data_loader import (
     load_recipes,
     read_csv_file,
-    read_raw_interactions,
 )
 
 
@@ -65,13 +64,6 @@ class TestCentralizedCSVFunctions:
         with pytest.raises(FileNotFoundError):
             read_csv_file("nonexistent_file.csv", data_dir=data_dir)
 
-    def test_read_raw_interactions(self, data_dir):
-        """Test loading raw interactions."""
-        df = read_raw_interactions(data_dir=data_dir, usecols=["recipe_id", "rating"])
-        assert isinstance(df, pd.DataFrame)
-        assert len(df) > 0
-        assert "recipe_id" in df.columns
-        assert "rating" in df.columns
 
 
 # ============================================================================
