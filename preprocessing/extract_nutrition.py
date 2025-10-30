@@ -53,7 +53,7 @@ def extract_nutrition_columns(df: pd.DataFrame, nutrition_col: str = "nutrition"
                     # If any value is NaN, return zeros
                     if any(pd.isna(v) for v in values):
                         raise ValueError("Contains NaN values")
-                    
+
                     return pd.Series(
                         {
                             "calories": values[0],
@@ -95,7 +95,7 @@ def extract_nutrition_columns(df: pd.DataFrame, nutrition_col: str = "nutrition"
     df = pd.concat([df, nutrition_df], axis=1)
 
     # Check if nutrition_df is a DataFrame (not Series for empty data)
-    if hasattr(nutrition_df, 'columns'):
+    if hasattr(nutrition_df, "columns"):
         logger.info(f"Extracted nutrition columns: {nutrition_df.columns.tolist()}")
         if len(df) > 0:
             logger.info(

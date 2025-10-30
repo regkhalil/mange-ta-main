@@ -3,68 +3,67 @@ Tests pour les composants UI du package components.
 """
 
 import unittest
-from unittest.mock import Mock, patch, MagicMock
-import numpy as np
+from unittest.mock import Mock, patch
+
 import pandas as pd
-import pytest
 
 # Import des fonctions à tester
 from components.filters_panel import render_filters_panel
 from components.metrics_header import render_metrics_header
 from components.nutri_score import (
-    get_nutri_grade,
-    get_nutri_color,
     display_nutri_score_badge,
     display_nutri_score_scale,
-    render_nutri_score_in_card
+    get_nutri_color,
+    get_nutri_grade,
+    render_nutri_score_in_card,
 )
 
 
 class TestFiltersPanel(unittest.TestCase):
     """Tests pour le composant filters_panel"""
 
-    @patch('components.filters_panel.st')
+    @patch("components.filters_panel.st")
     def test_render_filters_panel_sidebar(self, mock_st):
         """Test du rendu des filtres en sidebar"""
         # Mock session state avec dictionnaire normal
         session_state_mock = {}
         mock_st.session_state = session_state_mock
-        
+
         # Mock widgets pour sidebar
         mock_st.sidebar.slider.side_effect = [
             (10, 30),  # prep_range
-            (3, 8),    # ing_range
-            (200, 600) # cal_range
+            (3, 8),  # ing_range
+            (200, 600),  # cal_range
         ]
-        mock_st.sidebar.multiselect.return_value = ['A', 'B']
+        mock_st.sidebar.multiselect.return_value = ["A", "B"]
         mock_st.sidebar.checkbox.return_value = True
-        
+
         result = render_filters_panel(in_sidebar=True)
-        
+
         # Vérifier la structure du résultat
         self.assertIsInstance(result, dict)
-        self.assertIn('prep', result)
-        self.assertIn('ingredients', result)
-        self.assertIn('calories', result)
-        self.assertIn('vegetarian_only', result)
-        self.assertIn('nutrition_grades', result)
-        
+        self.assertIn("prep", result)
+        self.assertIn("ingredients", result)
+        self.assertIn("calories", result)
+        self.assertIn("vegetarian_only", result)
+        self.assertIn("nutrition_grades", result)
+
         # Vérifier les valeurs
-        self.assertEqual(result['prep'], [10, 30])
-        self.assertEqual(result['ingredients'], [3, 8])
-        self.assertEqual(result['calories'], [200, 600])
-        self.assertTrue(result['vegetarian_only'])
-        self.assertEqual(result['nutrition_grades'], ['A', 'B'])
-        
+        self.assertEqual(result["prep"], [10, 30])
+        self.assertEqual(result["ingredients"], [3, 8])
+        self.assertEqual(result["calories"], [200, 600])
+        self.assertTrue(result["vegetarian_only"])
+        self.assertEqual(result["nutrition_grades"], ["A", "B"])
+
         # Vérifier que filter_key_suffix a été initialisé
-        self.assertIn('filter_key_suffix', session_state_mock)
-        self.assertEqual(session_state_mock['filter_key_suffix'], 0)
+        self.assertIn("filter_key_suffix", session_state_mock)
+        self.assertEqual(session_state_mock["filter_key_suffix"], 0)
 
 
 class TestMetricsHeader(unittest.TestCase):
     """Tests pour le composant metrics_header"""
 
-    @patch('components.metrics_header.st')
+    @patch("components.metrics_header.st")
     def test_render_metrics_header_complete_stats(self, mock_st):
         """Test du rendu des métriques avec stats complètes"""
         # Mock columns
@@ -73,19 +72,14 @@ class TestMetricsHeader(unittest.TestCase):
         col3_mock = Mock()
         col4_mock = Mock()
         mock_st.columns.return_value = (col1_mock, col2_mock, col3_mock, col4_mock)
-        
-        stats = {
-            'total_recipes': 1000,
-            'median_prep_time': 25.5,
-            'avg_calories': 450.2,
-            'vegetarian_percentage': 35.7
-        }
-        
+
+        stats = {"total_recipes": 1000, "median_prep_time": 25.5, "avg_calories": 450.2, "vegetarian_percentage": 35.7}
+
         render_metrics_header(stats)
-        
+
         # Vérifier la création des colonnes
         mock_st.columns.assert_called_once_with(4)
-        
+
         # Vérifier les appels metric
         col1_mock.metric.assert_called_once_with(label="📚 Recettes totales", value="1,000")
         col2_mock.metric.assert_called_once_with(label="⏱️ Temps médian", value="26 min")
@@ -128,7 +122,7 @@ class TestNutriScore(unittest.TestCase):
 
     def test_get_nutri_grade_nan(self):
         """Test avec valeur NaN"""
-        self.assertEqual(get_nutri_grade(float('nan')), "C")
+        self.assertEqual(get_nutri_grade(float("nan")), "C")
         self.assertEqual(get_nutri_grade(pd.NA), "C")
 
     def test_get_nutri_grade_none(self):
@@ -160,7 +154,7 @@ class TestNutriScore(unittest.TestCase):
         """Test de l'affichage de l'échelle"""
         scale_html = display_nutri_score_scale()
         self.assertIsInstance(scale_html, str)
-        
+
         # Vérifier que toutes les couleurs sont présentes
         colors = ["#238B45", "#85BB2F", "#FECC00", "#FF9500", "#E63946"]
         for color in colors:
@@ -173,7 +167,7 @@ class TestNutriScore(unittest.TestCase):
         self.assertIn("A", card_with_score)
         self.assertIn("#238B45", card_with_score)
         self.assertIn("88", card_with_score)  # Score arrondi
-        
+
         # Test sans score
         card_without_score = render_nutri_score_in_card("B")
         self.assertIn("B", card_without_score)
@@ -182,13 +176,13 @@ class TestNutriScore(unittest.TestCase):
     def test_nutri_score_integration(self):
         """Test d'intégration entre les fonctions Nutri-Score"""
         # Test du workflow complet avec scores réels
-        nutrition_scores = [95.0, 75.0, 60.0, 45.0, 25.0, float('nan')]
-        
+        nutrition_scores = [95.0, 75.0, 60.0, 45.0, 25.0, float("nan")]
+
         grades = [get_nutri_grade(score) for score in nutrition_scores]
         expected_grades = ["A", "B", "C", "D", "E", "C"]
-        
+
         self.assertEqual(grades, expected_grades)
-        
+
         # Tester les couleurs correspondantes
         colors = [get_nutri_color(grade) for grade in grades]
         self.assertEqual(len(colors), len(grades))
@@ -196,5 +190,5 @@ class TestNutriScore(unittest.TestCase):
         self.assertIn("#85BB2F", colors)  # B
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

@@ -249,7 +249,7 @@ class TestIntegration:
         logger = logging.getLogger("preprocessing.preprocess_utils")
         test_message = "Test integration message"
         logger.info(test_message)
-        
+
         # Force flush des handlers pour s'assurer que le message est écrit
         for handler in logging.getLogger().handlers:
             handler.flush()
@@ -272,11 +272,11 @@ class TestIntegration:
                 "id": [1, 2, 3, 4, 5],
                 "name": ["Recipe A", "Recipe B", "Recipe C", "Recipe D", "Recipe E"],
                 "nutrition": [
-                    "[100, 10, 5, 200, 15, 3, 30]", 
+                    "[100, 10, 5, 200, 15, 3, 30]",
                     "[200, 15, 8, 300, 20, 5, 45]",
                     "[150, 12, 6, 250, 18, 4, 35]",
                     "[180, 14, 7, 280, 22, 6, 40]",
-                    "[220, 18, 9, 320, 25, 8, 50]"
+                    "[220, 18, 9, 320, 25, 8, 50]",
                 ],
             }
         )

@@ -46,6 +46,7 @@ def calculate_ingredient_health_index(df: pd.DataFrame, min_frequency: int = 100
     # Import data_loader for standardized CSV reading (supports both local and Google Drive)
     import sys
     from pathlib import Path
+
     sys.path.insert(0, str(Path(__file__).parent.parent))
     from services.data_loader import read_csv_file
 
@@ -72,13 +73,13 @@ def calculate_ingredient_health_index(df: pd.DataFrame, min_frequency: int = 100
         # Fallback: If dtype specification fails, read naturally and force conversion
         logger.warning(f"Failed to read CSV with explicit dtypes: {e}. Falling back to natural read + conversion.")
         stats_df = read_csv_file("ingredient_health_index.csv")
-        
+
         # Force numeric conversion for all numeric columns
         numeric_cols = ["avg_score", "median_score", "frequency", "std_score", "min_score", "max_score", "consistency"]
         for col in numeric_cols:
             if col in stats_df.columns:
                 stats_df[col] = pd.to_numeric(stats_df[col], errors="coerce")
-        
+
         # Drop any rows with non-numeric frequency
         stats_df = stats_df.dropna(subset=["frequency"])
 

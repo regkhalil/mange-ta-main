@@ -659,7 +659,7 @@ class TestEndToEndValidation:
         # car les scores élevés peuvent indiquer une meilleure nutrition globale
         assert abs(sat_fat_correlation) > 0  # Il devrait y avoir une corrélation
 
-        # Les plats riches en sodium devraient avoir des scores plus faibles  
+        # Les plats riches en sodium devraient avoir des scores plus faibles
         if "sodium_pdv" in df.columns:
             sodium_correlation = scores.corr(df["sodium_pdv"])
         else:

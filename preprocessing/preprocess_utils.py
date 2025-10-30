@@ -94,9 +94,9 @@ def setup_logging(logs_dir: str = "logs") -> None:
             logging.FileHandler(log_filename),
             logging.StreamHandler(),  # Also log to console
         ],
-        force=True  # Force reconfiguration
+        force=True,  # Force reconfiguration
     )
-    
+
     # Explicitly set root logger level
     logging.getLogger().setLevel(logging.INFO)
 

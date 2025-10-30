@@ -55,11 +55,11 @@ def clean_text(text: str, apply_title_case: bool = False, is_sentence: bool = Fa
     """
     if pd.isna(text) or text is None:
         return ""
-    
+
     # Convert non-string types to string
     if not isinstance(text, str):
         text = str(text)
-    
+
     if not text:
         return ""
 
@@ -482,7 +482,7 @@ def _capitalize_proper_nouns(text: str) -> str:
     for word in words:
         # Check if word (without punctuation) is a proper noun
         clean_word = word.lower().strip(".,!?;:()[]\"'")
-        
+
         # Handle possessives separately
         if "'" in word:
             base_word = word.split("'")[0].lower()
@@ -611,7 +611,7 @@ def clean_list_column(
         else:
             # Convert non-string to string and clean, but skip 'None' strings
             item_str = str(item) if item is not None else ""
-            if item_str and item_str.strip() and item_str.lower() != 'none':
+            if item_str and item_str.strip() and item_str.lower() != "none":
                 cleaned = clean_text(
                     item_str, apply_title_case=apply_title_case, is_sentence=capitalize_first, fast_mode=fast_mode
                 )
