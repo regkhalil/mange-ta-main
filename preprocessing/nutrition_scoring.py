@@ -551,65 +551,128 @@ def precompute_ingredient_health_index(
     """
     logger.info(f"Precomputing ingredient health index (min_frequency={min_frequency})...")
 
-    ingredient_scores = {}
-    ingredient_counts = {}
+    # ==========================================================================
+    # NEW IMPLEMENTATION: Pandas aggregation (v2 - replaces manual loops)
+    # ==========================================================================
+    # To revert to old implementation: Search for "OLD IMPLEMENTATION" below
+    # and uncomment that section while removing this block
+    # ==========================================================================
 
-    # Parse ingredients and aggregate scores
-    for idx, row in df.iterrows():
-        try:
-            ingredients_list = ast.literal_eval(row["ingredients"])
-            score = row["nutrition_score"]
+    # Step 1: Explode ingredients into rows (one row per ingredient-recipe pair)
+    logger.info("Exploding ingredients into individual rows...")
+    df_exploded = df[["nutrition_score", "ingredients"]].copy()
 
-            if pd.notna(score):
-                for ingredient in ingredients_list:
-                    ingredient = ingredient.strip().lower()
-                    if ingredient:
-                        if ingredient not in ingredient_scores:
-                            ingredient_scores[ingredient] = []
-                            ingredient_counts[ingredient] = 0
-                        ingredient_scores[ingredient].append(score)
-                        ingredient_counts[ingredient] += 1
-        except Exception:
-            continue
+    # Parse and clean ingredients
+    df_exploded["ingredients"] = df_exploded["ingredients"].apply(
+        lambda x: [ing.strip().lower() for ing in ast.literal_eval(x)] if pd.notna(x) else []
+    )
 
-    logger.info(f"Found {len(ingredient_scores)} unique ingredients")
+    # Explode to get one row per ingredient-recipe combination
+    df_exploded = df_exploded.explode("ingredients")
 
-    # Calculate statistics
-    ingredient_stats = []
-    for ingredient, scores in ingredient_scores.items():
-        if ingredient_counts[ingredient] >= min_frequency:
-            scores_array = np.array(scores)
-            ingredient_stats.append(
-                {
-                    "ingredient": ingredient,
-                    "avg_score": np.mean(scores_array),
-                    "median_score": np.median(scores_array),
-                    "frequency": ingredient_counts[ingredient],
-                    "std_score": np.std(scores_array),
-                    "min_score": np.min(scores_array),
-                    "max_score": np.max(scores_array),
-                    "consistency": 1 / (np.std(scores_array) + 0.1),  # Lower std = more consistent
-                }
-            )
+    # Remove empty ingredients and null scores
+    df_exploded = df_exploded[
+        (df_exploded["ingredients"].notna())
+        & (df_exploded["ingredients"] != "")
+        & (df_exploded["nutrition_score"].notna())
+    ]
 
-    # Sort by average score (healthiest first)
-    ingredient_df = pd.DataFrame(ingredient_stats)
+    logger.info(f"Exploded to {len(df_exploded)} ingredient-recipe pairs")
 
-    # DEFENSIVE FIX: Force numeric conversion - handles any edge cases
-    ingredient_df["frequency"] = pd.to_numeric(ingredient_df["frequency"], errors="coerce")
+    # Step 2: Aggregate using pandas groupby (type-safe, much faster)
+    logger.info("Aggregating ingredient statistics using pandas groupby...")
+    ingredient_df = (
+        df_exploded.groupby("ingredients")["nutrition_score"]
+        .agg(
+            avg_score="mean",
+            median_score="median",
+            frequency="count",  # ALWAYS returns int64 (type-safe)
+            std_score="std",
+            min_score="min",
+            max_score="max",
+        )
+        .reset_index()
+    )
 
-    # Drop any non-numeric rows (removes bad data instead of filling with defaults)
-    ingredient_df = ingredient_df.dropna(subset=["frequency"])
+    # Rename column
+    ingredient_df.rename(columns={"ingredients": "ingredient"}, inplace=True)
 
+    # Calculate consistency
+    ingredient_df["consistency"] = 1 / (ingredient_df["std_score"] + 0.1)
+
+    logger.info(f"Calculated stats for {len(ingredient_df)} unique ingredients")
+
+    # Step 3: Filter by minimum frequency
+    ingredient_df = ingredient_df[ingredient_df["frequency"] >= min_frequency]
+
+    # Step 4: Sort by average score (healthiest first)
     ingredient_df = ingredient_df.sort_values("avg_score", ascending=False)
 
-    # Ensure proper dtypes before saving to CSV (keep frequency as float for consistency)
+    # ==========================================================================
+    # OLD IMPLEMENTATION (commented out - for easy revert)
+    # ==========================================================================
+    # ingredient_scores = {}
+    # ingredient_counts = {}
+    #
+    # # Parse ingredients and aggregate scores
+    # for idx, row in df.iterrows():
+    #     try:
+    #         ingredients_list = ast.literal_eval(row["ingredients"])
+    #         score = row["nutrition_score"]
+    #
+    #         if pd.notna(score):
+    #             for ingredient in ingredients_list:
+    #                 ingredient = ingredient.strip().lower()
+    #                 if ingredient:
+    #                     if ingredient not in ingredient_scores:
+    #                         ingredient_scores[ingredient] = []
+    #                         ingredient_counts[ingredient] = 0
+    #                     ingredient_scores[ingredient].append(score)
+    #                     ingredient_counts[ingredient] += 1
+    #     except Exception:
+    #         continue
+    #
+    # logger.info(f"Found {len(ingredient_scores)} unique ingredients")
+    #
+    # # Calculate statistics
+    # ingredient_stats = []
+    # for ingredient, scores in ingredient_scores.items():
+    #     if ingredient_counts[ingredient] >= min_frequency:
+    #         scores_array = np.array(scores)
+    #         ingredient_stats.append(
+    #             {
+    #                 "ingredient": ingredient,
+    #                 "avg_score": np.mean(scores_array),
+    #                 "median_score": np.median(scores_array),
+    #                 "frequency": ingredient_counts[ingredient],
+    #                 "std_score": np.std(scores_array),
+    #                 "min_score": np.min(scores_array),
+    #                 "max_score": np.max(scores_array),
+    #                 "consistency": 1 / (np.std(scores_array) + 0.1),
+    #             }
+    #         )
+    #
+    # # Sort by average score (healthiest first)
+    # ingredient_df = pd.DataFrame(ingredient_stats)
+    #
+    # # DEFENSIVE FIX: Force numeric conversion - handles any edge cases
+    # ingredient_df["frequency"] = pd.to_numeric(ingredient_df["frequency"], errors="coerce")
+    #
+    # # Drop any non-numeric rows (removes bad data instead of filling with defaults)
+    # ingredient_df = ingredient_df.dropna(subset=["frequency"])
+    #
+    # ingredient_df = ingredient_df.sort_values("avg_score", ascending=False)
+    # ==========================================================================
+
+    # Step 5: Ensure proper dtypes before saving to CSV
+    # Note: frequency is already int64 from .count(), convert to float64 for consistency
+    ingredient_df["frequency"] = ingredient_df["frequency"].astype("float64")
+
     ingredient_df = ingredient_df.astype(
         {
             "ingredient": str,
             "avg_score": "float64",
             "median_score": "float64",
-            "frequency": "float64",  # Keep as float64 instead of int64
             "std_score": "float64",
             "min_score": "float64",
             "max_score": "float64",
