@@ -110,11 +110,21 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# Masquer sidebar
+# Masquer sidebar ET forcer styles sur cartes noires
 st.markdown(
     """<style>
     [data-testid="stSidebar"], [data-testid="stSidebarCollapseButton"] {
         display: none !important;
+    }
+    
+    /* FORCER BLANC SUR CARTES NOIRES - Neutraliser light mode */
+    .recipe-similar-card-dark h3,
+    .recipe-similar-card-dark h3 * {
+        color: #ffffff !important;
+    }
+    .recipe-similar-card-dark p,
+    .recipe-similar-card-dark p * {
+        color: #b0b0b0 !important;
     }
     </style>""",
     unsafe_allow_html=True,
@@ -160,6 +170,20 @@ def inject_global_styles() -> None:
         flex: 1 !important;
         display: flex !important;
         flex-direction: column !important;
+    }
+    
+    /* Titres des cartes de recettes en blanc - MÊME LOGIQUE QUE RECETTES SIMILAIRES */
+    .recipe-similar-card-dark h3 {
+        color: #ffffff !important;
+    }
+    .recipe-similar-card-dark p {
+        color: #b0b0b0 !important;
+    }
+    .recipe-similar-card-dark .recipe-rating-stars {
+        color: #ffc107 !important;
+    }
+    .recipe-similar-card-dark .recipe-rating-text {
+        color: #ffffff !important;
     }
     </style>""",
         unsafe_allow_html=True,
@@ -409,14 +433,14 @@ def render_recipe_card(recipe: pd.Series, recipe_id: int) -> None:
                 ">{nutri_grade}</div>
                 {f'<img src="{image_url}" style="width: 100%; height: 100%; object-fit: cover;" alt="{recipe_name}" />' if image_url else '<div style="color: rgba(255,255,255,0.5); font-size: 3rem;">🍽️</div>'}
             </div>
-            <div style="background: #2c2c2c; padding: 1rem; color: white;
+            <div class="recipe-similar-card-dark" style="background: #2c2c2c; padding: 1rem; color: white;
                         height: 220px; flex-shrink: 0; display: flex; flex-direction: column;">
                 <div style="margin-bottom: 0.7rem; min-height: 28px;">{tags_html}</div>
-                <h3 style="margin: 0 0 0.5rem 0; font-size: 1.25rem; color: white;
+                <h3 style="margin: 0 0 0.5rem 0; font-size: 1.25rem; color: #fff !important;
                            font-weight: 700; line-height: 1.3; height: 3.5rem;
                            overflow: hidden; text-overflow: ellipsis; display: -webkit-box;
                            -webkit-line-clamp: 2; -webkit-box-orient: vertical;">{display_name}</h3>
-                <p style="margin: 0; font-size: 0.85rem; color: #b0b0b0;
+                <p style="margin: 0; font-size: 0.85rem; color: #b0b0b0 !important;
                           line-height: 1.4; flex-grow: 1; overflow: hidden;">{description}</p>
                 {rating_display}
             </div>
@@ -561,7 +585,7 @@ def render_recipe_card_horizontal(recipe: pd.Series, recipe_id: int) -> None:
             margin-bottom: 0.6rem;
         }}
         .recipe-title-compact {{
-            color: #ffffff;
+            color: #ffffff !important;
             font-size: 1rem;
             font-weight: 700;
             line-height: 1.3;

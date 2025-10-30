@@ -59,11 +59,22 @@ st.markdown(
         color: #000000 !important;
     }
     
-    /* Boutons avec texte blanc */
-    button[kind="secondary"], button[kind="primary"] {
+    /* Boutons style rose comme "Rechercher" */
+    button[kind="secondary"], button[kind="primary"], button {
+        background: linear-gradient(135deg, #ff4d6d 0%, #ff758f 100%) !important;
         color: #ffffff !important;
+        border: none !important;
+        border-radius: 8px !important;
+        padding: 0.5rem 1.5rem !important;
+        font-weight: 600 !important;
+        box-shadow: 0 4px 6px rgba(255, 77, 109, 0.3) !important;
+        transition: all 0.3s ease !important;
     }
-    button p {
+    button:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 6px 12px rgba(255, 77, 109, 0.4) !important;
+    }
+    button p, button div, button span {
         color: #ffffff !important;
     }
 </style>
