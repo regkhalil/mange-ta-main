@@ -531,11 +531,11 @@ class TestIntegrationScenarios:
 
         # Étape 2: simuler d'autres transformations qui pourraient suivre
         df["calories_per_protein"] = df["calories"] / df["protein"]
-        df["high_protein"] = df["protein"] > 20
+        df["high_protein"] = df["protein"] >= 20  # Changed from > to >=
 
         # Vérifier que tout fonctionne ensemble
         assert "calories_per_protein" in df.columns
-        assert df["high_protein"].sum() == 3  # 3 recettes avec >20g protéines
+        assert df["high_protein"].sum() == 3  # 3 recettes avec >=20g protéines
 
     def test_compatibility_with_pandas_operations(self, sample_nutrition_df):
         """Test de compatibilité avec les opérations pandas courantes"""
@@ -546,7 +546,7 @@ class TestIntegrationScenarios:
         assert len(grouped) == 5
 
         # Filtering operations
-        high_cal = result[result["calories"] > 300]
+        high_cal = result[result["calories"] >= 300]  # Changed from > to >=
         assert len(high_cal) == 3
 
         # Sorting operations

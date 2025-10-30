@@ -632,3 +632,78 @@ def list_drive_files(service=None) -> List[dict]:
     except HttpError as error:
         logger.error(f"Error listing files: {error}")
         return []
+
+
+def main():
+    """
+    Main function to generate token and display folder information.
+
+    This function:
+    1. Authenticates with Google Drive and generates/refreshes token.json
+    2. Gets or creates the app's Google Drive folder
+    3. Displays the folder ID and lists existing files
+    """
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+
+    logger.info("=" * 70)
+    logger.info("Google Drive Authentication & Setup")
+    logger.info("=" * 70)
+
+    # Step 1: Authenticate and generate token
+    creds = get_oauth_credentials()
+    if not creds:
+        logger.error("Failed to authenticate. Please check your credentials.")
+        return 1
+
+    logger.info("\n✓ Authentication successful!")
+    logger.info(f"✓ Token saved to: {TOKEN_PATH}")
+
+    # Step 2: Get or create folder and display folder ID
+    try:
+        service = build("drive", "v3", credentials=creds)
+        folder_id = get_or_create_folder(service)
+
+        if folder_id:
+            logger.info("\n" + "=" * 70)
+            logger.info("FOLDER INFORMATION")
+            logger.info("=" * 70)
+            logger.info(f"Folder ID: {folder_id}")
+            logger.info("\nAdd this to your env.sh:")
+            logger.info(f"export GOOGLE_FOLDER_ID={folder_id}")
+
+            # Save folder ID to file
+            if FOLDER_ID_FILE.exists():
+                logger.info(f"\n✓ Folder ID cached at: {FOLDER_ID_FILE}")
+
+            # Step 3: List existing files
+            files = list_drive_files(service)
+            if files:
+                logger.info("\n" + "=" * 70)
+                logger.info(f"EXISTING FILES IN FOLDER ({len(files)} files)")
+                logger.info("=" * 70)
+                for file in files:
+                    size_mb = int(file.get("size", 0)) / (1024 * 1024)
+                    logger.info(f"  • {file.get('name')} ({size_mb:.1f} MB)")
+            else:
+                logger.info("\nFolder is currently empty.")
+
+            logger.info("\n" + "=" * 70)
+            logger.info("Setup complete! You can now:")
+            logger.info("  1. Add GOOGLE_FOLDER_ID to env.sh")
+            logger.info("  2. Run 'make upload' to upload data files")
+            logger.info("  3. Run 'make start' with STREAMLIT_ENV=prod")
+            logger.info("=" * 70)
+
+        else:
+            logger.error("Failed to get or create Google Drive folder")
+            return 1
+
+    except Exception as e:
+        logger.error(f"Error during setup: {e}")
+        return 1
+
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

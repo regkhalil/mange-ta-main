@@ -226,3 +226,4 @@ Makefile
 # data directory
 data/
 services/data_loader.py
+env.sh

@@ -53,7 +53,14 @@ def clean_text(text: str, apply_title_case: bool = False, is_sentence: bool = Fa
     Returns:
         Cleaned and formatted text
     """
-    if not text or pd.isna(text):
+    if pd.isna(text) or text is None:
+        return ""
+    
+    # Convert non-string types to string
+    if not isinstance(text, str):
+        text = str(text)
+    
+    if not text:
         return ""
 
     # Fast mode: minimal cleaning for steps/tags
@@ -474,12 +481,19 @@ def _capitalize_proper_nouns(text: str) -> str:
 
     for word in words:
         # Check if word (without punctuation) is a proper noun
-        clean_word = word.strip(".,!?;:()[]\"'")
-        if clean_word.lower() in proper_nouns:
-            # Capitalize and preserve surrounding punctuation
-            prefix = word[: len(word) - len(word.lstrip(".,!?;:()[]\"'"))]
-            suffix = word[len(clean_word) + len(prefix) :]
-            result.append(prefix + clean_word.capitalize() + suffix)
+        clean_word = word.lower().strip(".,!?;:()[]\"'")
+        
+        # Handle possessives separately
+        if "'" in word:
+            base_word = word.split("'")[0].lower()
+            if base_word in proper_nouns:
+                parts = word.split("'")
+                parts[0] = parts[0].capitalize()
+                result.append("'".join(parts))
+            else:
+                result.append(word)
+        elif clean_word in proper_nouns:
+            result.append(word.capitalize())
         else:
             result.append(word)
 
@@ -585,15 +599,24 @@ def clean_list_column(
     # Clean each item in the list
     cleaned_items = []
     for item in items:
-        if isinstance(item, str):
+        # Skip None and empty items
+        if item is None or (isinstance(item, str) and not item.strip()):
+            continue
+        elif isinstance(item, str):
             cleaned = clean_text(
                 item, apply_title_case=apply_title_case, is_sentence=capitalize_first, fast_mode=fast_mode
             )
-            if cleaned:  # Only add non-empty strings
+            if cleaned and cleaned.strip():  # Only add non-empty strings
                 cleaned_items.append(cleaned)
         else:
-            # Keep non-string items as-is (shouldn't happen but handle gracefully)
-            cleaned_items.append(str(item))
+            # Convert non-string to string and clean, but skip 'None' strings
+            item_str = str(item) if item is not None else ""
+            if item_str and item_str.strip() and item_str.lower() != 'none':
+                cleaned = clean_text(
+                    item_str, apply_title_case=apply_title_case, is_sentence=capitalize_first, fast_mode=fast_mode
+                )
+                if cleaned and cleaned.strip():
+                    cleaned_items.append(cleaned)
 
     return cleaned_items
 

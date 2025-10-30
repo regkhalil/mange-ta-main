@@ -21,6 +21,7 @@ def load_recipe_data(file_path: str = "data/RAW_recipes.csv", local_data_dir: st
     Returns:
         pd.DataFrame: Recipe data with all original columns
     """
+    logger = logging.getLogger(__name__)
 
     if os.path.exists(file_path):
         logger.info(f"Loading existing file from {file_path}")
@@ -93,6 +94,10 @@ def setup_logging(logs_dir: str = "logs") -> None:
             logging.FileHandler(log_filename),
             logging.StreamHandler(),  # Also log to console
         ],
+        force=True  # Force reconfiguration
     )
+    
+    # Explicitly set root logger level
+    logging.getLogger().setLevel(logging.INFO)
 
     print(f"Logging initialized. Log file: {log_filename}")

@@ -43,37 +43,54 @@ def calculate_ingredient_health_index(df: pd.DataFrame, min_frequency: int = 100
     """
     logger.info("Loading precomputed ingredient health index from CSV")
 
-    # Load from precomputed CSV file
-    import os
+    # Import data_loader for standardized CSV reading (supports both local and Google Drive)
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).parent.parent))
+    from services.data_loader import read_csv_file
 
-    csv_path = "data/ingredient_health_index.csv"
-
-    if not os.path.exists(csv_path):
-        logger.error(f"Precomputed ingredient health index not found at {csv_path}")
+    # Load using centralized data loader with explicit dtypes
+    # This handles both local and production (Google Drive) workflows
+    try:
+        stats_df = read_csv_file(
+            "ingredient_health_index.csv",
+            dtype={
+                "ingredient": str,
+                "avg_score": float,
+                "median_score": float,
+                "frequency": float,  # CRITICAL: Read as float, not object
+                "std_score": float,
+                "min_score": float,
+                "max_score": float,
+                "consistency": float,
+            },
+        )
+    except FileNotFoundError:
+        logger.error("Precomputed ingredient health index not found")
         return pd.DataFrame(columns=["ingredient", "avg_score", "frequency", "std_score", "min_score", "max_score"])
-
-    stats_df = pd.read_csv(
-        csv_path,
-        dtype={
-            "ingredient": str,
-            "avg_score": float,
-            "frequency": int,
-            "std_score": float,
-            "min_score": float,
-            "max_score": float,
-        },
-    )
+    except (ValueError, TypeError) as e:
+        # Fallback: If dtype specification fails, read naturally and force conversion
+        logger.warning(f"Failed to read CSV with explicit dtypes: {e}. Falling back to natural read + conversion.")
+        stats_df = read_csv_file("ingredient_health_index.csv")
+        
+        # Force numeric conversion for all numeric columns
+        numeric_cols = ["avg_score", "median_score", "frequency", "std_score", "min_score", "max_score", "consistency"]
+        for col in numeric_cols:
+            if col in stats_df.columns:
+                stats_df[col] = pd.to_numeric(stats_df[col], errors="coerce")
+        
+        # Drop any rows with non-numeric frequency
+        stats_df = stats_df.dropna(subset=["frequency"])
 
     # Clean and format ingredient names for display
     stats_df["ingredient"] = stats_df["ingredient"].str.strip().str.title()
 
-    # Use avg_score as proxy for median_score (fast and accurate for our purposes)
-    stats_df["median_score"] = stats_df["avg_score"]
+    # Filter by minimum frequency
+    stats_df = stats_df[stats_df["frequency"] >= min_frequency]
 
-    # Calculate consistency from std_score (lower std = more consistent)
-    stats_df["consistency"] = 1 / (stats_df["std_score"] + 0.1)
-
-    logger.info(f"Loaded {len(stats_df)} ingredients from precomputed index with calculated metrics")
+    logger.info(
+        f"Loaded {len(stats_df)} ingredients from precomputed index (frequency dtype: {stats_df['frequency'].dtype})"
+    )
 
     return stats_df
 
@@ -142,14 +159,13 @@ def create_ingredient_scatter(df: pd.DataFrame, top_n: int = 50) -> go.Figure:
         top_ingredients,
         x="frequency",
         y="avg_score",
-        size="consistency",
+        size="std_score",
         hover_data=["ingredient", "std_score"],
         text="ingredient",
         title=f"Top {top_n} Ingrédients: Fréquence vs Score Nutritionnel Moyen",
         labels={
             "frequency": "Fréquence (nombre de recettes)",
             "avg_score": "Score Nutritionnel Moyen",
-            "consistency": "Consistance",
             "std_score": "Écart-type",
         },
     )
