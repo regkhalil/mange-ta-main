@@ -583,12 +583,10 @@ def precompute_ingredient_health_index(
                 {
                     "ingredient": ingredient,
                     "avg_score": np.mean(scores_array),
-                    "median_score": np.median(scores_array),
                     "frequency": ingredient_counts[ingredient],
                     "std_score": np.std(scores_array),
                     "min_score": np.min(scores_array),
                     "max_score": np.max(scores_array),
-                    "consistency": 1 / (np.std(scores_array) + 0.1),  # Lower std = more consistent
                 }
             )
 
@@ -605,12 +603,10 @@ def precompute_ingredient_health_index(
         {
             "ingredient": str,
             "avg_score": "float64",
-            "median_score": "float64",
             "frequency": "int64",
             "std_score": "float64",
             "min_score": "float64",
             "max_score": "float64",
-            "consistency": "float64",
         }
     )
 

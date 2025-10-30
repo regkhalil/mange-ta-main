@@ -143,14 +143,13 @@ def create_ingredient_scatter(df: pd.DataFrame, top_n: int = 50) -> go.Figure:
         top_ingredients,
         x="frequency",
         y="avg_score",
-        size="consistency",
+        size="std_score",
         hover_data=["ingredient", "std_score"],
         text="ingredient",
         title=f"Top {top_n} Ingrédients: Fréquence vs Score Nutritionnel Moyen",
         labels={
             "frequency": "Fréquence (nombre de recettes)",
             "avg_score": "Score Nutritionnel Moyen",
-            "consistency": "Consistance",
             "std_score": "Écart-type",
         },
     )
