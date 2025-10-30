@@ -43,23 +43,44 @@ def calculate_ingredient_health_index(df: pd.DataFrame, min_frequency: int = 100
     """
     logger.info("Loading precomputed ingredient health index from CSV")
 
-    # Load from precomputed CSV file
-    import os
+    # Import data_loader for standardized CSV reading (supports both local and Google Drive)
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).parent.parent))
+    from services.data_loader import read_csv_file
 
-    csv_path = "data/ingredient_health_index.csv"
-
-    if not os.path.exists(csv_path):
-        logger.error(f"Precomputed ingredient health index not found at {csv_path}")
+    # Load using centralized data loader with explicit dtypes
+    # This handles both local and production (Google Drive) workflows
+    try:
+        stats_df = read_csv_file(
+            "ingredient_health_index.csv",
+            dtype={
+                "ingredient": str,
+                "avg_score": float,
+                "median_score": float,
+                "frequency": float,  # CRITICAL: Read as float, not object
+                "std_score": float,
+                "min_score": float,
+                "max_score": float,
+                "consistency": float,
+            },
+        )
+    except FileNotFoundError:
+        logger.error("Precomputed ingredient health index not found")
         return pd.DataFrame(columns=["ingredient", "avg_score", "frequency", "std_score", "min_score", "max_score"])
-
-    # Read CSV without dtype specification - let pandas read naturally
-    stats_df = pd.read_csv(csv_path)
-
-    # DEFENSIVE FIX: Force numeric conversion - handles quotes, blanks, strings, etc.
-    stats_df["frequency"] = pd.to_numeric(stats_df["frequency"], errors="coerce")
-
-    # Drop any non-numeric rows (removes bad data instead of filling with 0)
-    stats_df = stats_df.dropna(subset=["frequency"])
+    except (ValueError, TypeError) as e:
+        # Fallback: If dtype specification fails, read naturally and force conversion
+        logger.warning(f"Failed to read CSV with explicit dtypes: {e}. Falling back to natural read + conversion.")
+        stats_df = read_csv_file("ingredient_health_index.csv")
+        
+        # Force numeric conversion for all numeric columns
+        numeric_cols = ["avg_score", "median_score", "frequency", "std_score", "min_score", "max_score", "consistency"]
+        for col in numeric_cols:
+            if col in stats_df.columns:
+                stats_df[col] = pd.to_numeric(stats_df[col], errors="coerce")
+        
+        # Drop any rows with non-numeric frequency
+        stats_df = stats_df.dropna(subset=["frequency"])
 
     # Clean and format ingredient names for display
     stats_df["ingredient"] = stats_df["ingredient"].str.strip().str.title()
