@@ -47,17 +47,26 @@ def extract_nutrition_columns(df: pd.DataFrame, nutrition_col: str = "nutrition"
 
             # Extract values if valid list
             if isinstance(nutrition_list, (list, tuple)) and len(nutrition_list) >= 7:
-                return pd.Series(
-                    {
-                        "calories": float(nutrition_list[0]),
-                        "total_fat": float(nutrition_list[1]),
-                        "sugar": float(nutrition_list[2]),
-                        "sodium": float(nutrition_list[3]),
-                        "protein": float(nutrition_list[4]),
-                        "saturated_fat": float(nutrition_list[5]),
-                        "carbohydrates": float(nutrition_list[6]),
-                    }
-                )
+                # Check if any value is NaN or if we can't convert to float
+                try:
+                    values = [float(x) for x in nutrition_list[:7]]
+                    # If any value is NaN, return zeros
+                    if any(pd.isna(v) for v in values):
+                        raise ValueError("Contains NaN values")
+                    
+                    return pd.Series(
+                        {
+                            "calories": values[0],
+                            "total_fat": values[1],
+                            "sugar": values[2],
+                            "sodium": values[3],
+                            "protein": values[4],
+                            "saturated_fat": values[5],
+                            "carbohydrates": values[6],
+                        }
+                    )
+                except (ValueError, TypeError):
+                    pass  # Fall through to return zeros
         except (ValueError, SyntaxError, TypeError, IndexError) as e:
             logger.debug(f"Failed to parse nutrition value: {e}")
 
@@ -74,12 +83,25 @@ def extract_nutrition_columns(df: pd.DataFrame, nutrition_col: str = "nutrition"
             }
         )
 
+    # Handle empty DataFrame case
+    if len(df) == 0:
+        # Create empty nutrition columns for empty DataFrame
+        for col in ["calories", "total_fat", "sugar", "sodium", "protein", "saturated_fat", "carbohydrates"]:
+            df[col] = pd.Series([], dtype=float)
+        logger.info("Empty dataframe processed - created empty nutrition columns")
+        return df
+
     nutrition_df = df[nutrition_col].apply(extract_values)
     df = pd.concat([df, nutrition_df], axis=1)
 
-    logger.info(f"Extracted nutrition columns: {nutrition_df.columns.tolist()}")
-    logger.info(
-        f"Sample values - Calories mean: {df['calories'].mean():.1f}, Protein mean: {df['protein'].mean():.1f}g"
-    )
+    # Check if nutrition_df is a DataFrame (not Series for empty data)
+    if hasattr(nutrition_df, 'columns'):
+        logger.info(f"Extracted nutrition columns: {nutrition_df.columns.tolist()}")
+        if len(df) > 0:
+            logger.info(
+                f"Sample values - Calories mean: {df['calories'].mean():.1f}, Protein mean: {df['protein'].mean():.1f}g"
+            )
+    else:
+        logger.info("Empty dataframe processed - no nutrition columns extracted")
 
     return df
