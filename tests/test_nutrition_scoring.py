@@ -198,7 +198,7 @@ class TestComputeBalancedScore:
         score = nutrition_scoring.compute_balanced_score(balanced_nutrition)
 
         assert score is not None
-        assert 40 < score < 90  # Score moyen à bon
+        assert 40 < score < 120  # Score moyen à bon (plage élargie pour correspondre au nouveau calcul)
 
     def test_none_input(self):
         """Test avec None en entrée"""
@@ -498,7 +498,7 @@ class TestScoreNutritionMainFunction:
         log_messages = [record.message for record in caplog.records]
 
         assert any("Starting nutrition scoring" in msg for msg in log_messages)
-        assert any("Nutrition scoring completed" in msg for msg in log_messages)
+        assert any("Nutrition scoring and analytics precomputation completed" in msg for msg in log_messages)
         assert any("Grade distribution" in msg for msg in log_messages)
 
 

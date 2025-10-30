@@ -108,6 +108,7 @@ Version: 2.0
 
 import ast
 import logging
+import os
 from typing import List, Optional, Union
 
 import numpy as np
@@ -479,25 +480,76 @@ def calculate_complexity_index(df: pd.DataFrame) -> pd.DataFrame:
     """
     logger.info("Calculating complexity index...")
 
-    # Normalize each factor to 0-1 scale
-    steps_min, steps_max = df["n_steps"].min(), df["n_steps"].max()
-    ingr_min, ingr_max = df["n_ingredients"].min(), df["n_ingredients"].max()
-    time_min, time_max = df["minutes"].min(), df["minutes"].max()
+    # Check if required columns exist
+    required_cols = ["n_steps", "n_ingredients", "minutes"]
+    missing_cols = [col for col in required_cols if col not in df.columns]
+    
+    if missing_cols:
+        logger.warning(f"Missing columns for complexity calculation: {missing_cols}. Skipping complexity index.")
+        # Add default values if columns are missing
+        if "complexity_index" not in df.columns:
+            df["complexity_index"] = 50.0  # Default medium complexity
+        if "complexity_category" not in df.columns:
+            df["complexity_category"] = "Moyen"
+        return df
 
-    df["_steps_norm"] = (df["n_steps"] - steps_min) / (steps_max - steps_min)
-    df["_ingr_norm"] = (df["n_ingredients"] - ingr_min) / (ingr_max - ingr_min)
-    df["_time_norm"] = (df["minutes"] - time_min) / (time_max - time_min)
+    # Only proceed if we have data
+    if len(df) == 0:
+        logger.warning("Empty dataframe, skipping complexity calculation")
+        df["complexity_index"] = pd.Series([], dtype=float)
+        df["complexity_category"] = pd.Series([], dtype=str)
+        return df
 
-    # Weighted composite index (steps 40%, ingredients 40%, time 20%)
-    df["complexity_index"] = (df["_steps_norm"] * 0.4 + df["_ingr_norm"] * 0.4 + df["_time_norm"] * 0.2) * 100
+    # Clean and convert numeric columns to handle mixed types
+    try:
+        df_clean = df.copy()
+        # Convert to numeric, coerce errors to NaN
+        df_clean["n_steps"] = pd.to_numeric(df["n_steps"], errors='coerce')
+        df_clean["n_ingredients"] = pd.to_numeric(df["n_ingredients"], errors='coerce')
+        df_clean["minutes"] = pd.to_numeric(df["minutes"], errors='coerce')
+        
+        # Drop rows with NaN in any of these columns
+        df_clean = df_clean.dropna(subset=["n_steps", "n_ingredients", "minutes"])
+        
+        if len(df_clean) == 0:
+            logger.warning("No valid data for complexity calculation after cleaning")
+            df["complexity_index"] = 50.0
+            df["complexity_category"] = "Moyen"
+            return df
 
-    # Categorize
-    df["complexity_category"] = pd.cut(
-        df["complexity_index"], bins=[0, 33, 66, 100], labels=["Simple", "Moyen", "Complexe"], include_lowest=True
-    )
+        # Normalize each factor to 0-1 scale
+        steps_min, steps_max = df_clean["n_steps"].min(), df_clean["n_steps"].max()
+        ingr_min, ingr_max = df_clean["n_ingredients"].min(), df_clean["n_ingredients"].max()
+        time_min, time_max = df_clean["minutes"].min(), df_clean["minutes"].max()
 
-    # Drop temporary columns
-    df.drop(columns=["_steps_norm", "_ingr_norm", "_time_norm"], inplace=True)
+        # Handle case where min == max (avoid division by zero)
+        steps_range = steps_max - steps_min if steps_max != steps_min else 1
+        ingr_range = ingr_max - ingr_min if ingr_max != ingr_min else 1
+        time_range = time_max - time_min if time_max != time_min else 1
+
+        df_clean["_steps_norm"] = (df_clean["n_steps"] - steps_min) / steps_range
+        df_clean["_ingr_norm"] = (df_clean["n_ingredients"] - ingr_min) / ingr_range
+        df_clean["_time_norm"] = (df_clean["minutes"] - time_min) / time_range
+
+        # Weighted composite index (steps 40%, ingredients 40%, time 20%)
+        df_clean["complexity_index"] = (df_clean["_steps_norm"] * 0.4 + df_clean["_ingr_norm"] * 0.4 + df_clean["_time_norm"] * 0.2) * 100
+
+        # Categorize
+        df_clean["complexity_category"] = pd.cut(
+            df_clean["complexity_index"], bins=[0, 33, 66, 100], labels=["Simple", "Moyen", "Complexe"], include_lowest=True
+        )
+
+        # Merge back with original dataframe
+        df = df.merge(df_clean[["complexity_index", "complexity_category"]], left_index=True, right_index=True, how='left')
+        
+        # Fill NaN values for rows that couldn't be processed
+        df["complexity_index"] = df["complexity_index"].fillna(50.0)
+        df["complexity_category"] = df["complexity_category"].fillna("Moyen")
+
+    except Exception as e:
+        logger.warning(f"Error in complexity calculation: {e}. Using default values.")
+        df["complexity_index"] = 50.0
+        df["complexity_category"] = "Moyen"
 
     logger.info(f"Complexity index calculated - Mean: {df['complexity_index'].mean():.1f}")
     return df
@@ -518,15 +570,39 @@ def calculate_time_categories(df: pd.DataFrame) -> pd.DataFrame:
     """
     logger.info("Calculating time categories...")
 
-    df["time_category"] = pd.cut(
-        df["minutes"],
-        bins=[0, 15, 30, 60, float("inf")],
-        labels=["Rapide (≤15min)", "Moyen (15-30min)", "Long (30-60min)", "Très long (>60min)"],
-        include_lowest=True,
-    )
+    # Check if required column exists
+    if "minutes" not in df.columns:
+        logger.warning("Missing 'minutes' column for time categorization. Using default 'Moyen' category.")
+        df["time_category"] = "Moyen (15-30min)"
+        return df
 
-    category_counts = df["time_category"].value_counts()
-    logger.info(f"Time categories: {category_counts.to_dict()}")
+    # Only proceed if we have data
+    if len(df) == 0:
+        logger.warning("Empty dataframe, skipping time categorization")
+        df["time_category"] = pd.Series([], dtype=str)
+        return df
+
+    try:
+        # Clean the minutes column to handle mixed types
+        minutes_clean = pd.to_numeric(df["minutes"], errors='coerce')
+        
+        df["time_category"] = pd.cut(
+            minutes_clean,
+            bins=[0, 15, 30, 60, float("inf")],
+            labels=["Rapide (≤15min)", "Moyen (15-30min)", "Long (30-60min)", "Très long (>60min)"],
+            include_lowest=True,
+        )
+        
+        # Fill NaN values for invalid minutes
+        df["time_category"] = df["time_category"].fillna("Moyen (15-30min)")
+
+        category_counts = df["time_category"].value_counts()
+        logger.info(f"Time categories: {category_counts.to_dict()}")
+        
+    except Exception as e:
+        logger.warning(f"Error in time categorization: {e}. Using default category.")
+        df["time_category"] = "Moyen (15-30min)"
+
     return df
 
 
@@ -551,6 +627,42 @@ def precompute_ingredient_health_index(
     """
     logger.info(f"Precomputing ingredient health index (min_frequency={min_frequency})...")
 
+    # Check if required columns exist
+    required_cols = ["nutrition_score", "ingredients"]
+    missing_cols = [col for col in required_cols if col not in df.columns]
+    
+    if missing_cols:
+        logger.warning(f"Missing columns for ingredient health index: {missing_cols}. Skipping ingredient analysis.")
+        # Create empty DataFrame with expected structure
+        empty_df = pd.DataFrame({
+            'ingredient': [],
+            'avg_score': [],
+            'recipe_count': [],
+            'health_index': []
+        })
+        # Only save if directory exists
+        if os.path.dirname(output_path) and os.path.exists(os.path.dirname(output_path)):
+            empty_df.to_csv(output_path, index=False)
+        else:
+            logger.warning(f"Output directory does not exist: {os.path.dirname(output_path)}")
+        return empty_df
+
+    # Only proceed if we have data
+    if len(df) == 0:
+        logger.warning("Empty dataframe, skipping ingredient health index")
+        empty_df = pd.DataFrame({
+            'ingredient': [],
+            'avg_score': [],
+            'recipe_count': [],
+            'health_index': []
+        })
+        # Only save if directory exists
+        if os.path.dirname(output_path) and os.path.exists(os.path.dirname(output_path)):
+            empty_df.to_csv(output_path, index=False)
+        else:
+            logger.warning(f"Output directory does not exist: {os.path.dirname(output_path)}")
+        return empty_df
+
     # ==========================================================================
     # NEW IMPLEMENTATION: Pandas aggregation (v2 - replaces manual loops)
     # ==========================================================================
@@ -562,10 +674,16 @@ def precompute_ingredient_health_index(
     logger.info("Exploding ingredients into individual rows...")
     df_exploded = df[["nutrition_score", "ingredients"]].copy()
 
-    # Parse and clean ingredients
-    df_exploded["ingredients"] = df_exploded["ingredients"].apply(
-        lambda x: [ing.strip().lower() for ing in ast.literal_eval(x)] if pd.notna(x) else []
-    )
+    # Parse and clean ingredients with error handling
+    def parse_ingredients(x):
+        if pd.notna(x) and isinstance(x, str):
+            try:
+                return [ing.strip().lower() for ing in ast.literal_eval(x)]
+            except (ValueError, SyntaxError):
+                return []
+        return []
+    
+    df_exploded["ingredients"] = df_exploded["ingredients"].apply(parse_ingredients)
 
     # Explode to get one row per ingredient-recipe combination
     df_exploded = df_exploded.explode("ingredients")
