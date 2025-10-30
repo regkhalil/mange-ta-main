@@ -64,20 +64,17 @@ def calculate_ingredient_health_index(df: pd.DataFrame, min_frequency: int = 100
         },
     )
 
-    # DEFENSIVE FIX: Convert frequency to int64 after loading
-    # Using float dtype in read_csv is more forgiving with string values
-    stats_df["frequency"] = pd.to_numeric(stats_df["frequency"], errors="coerce").fillna(0).astype("float64").astype("int64")
-
     # Clean and format ingredient names for display
     stats_df["ingredient"] = stats_df["ingredient"].str.strip().str.title()
 
-    # Use avg_score as proxy for median_score (fast and accurate for our purposes)
-    stats_df["median_score"] = stats_df["avg_score"]
+    # Filter by minimum frequency
+    stats_df = stats_df[stats_df["frequency"] >= min_frequency]
 
-    # Calculate consistency from std_score (lower std = more consistent)
-    stats_df["consistency"] = 1 / (stats_df["std_score"] + 0.1)
+    # DEFENSIVE FIX: Ensure frequency is float64 after all operations
+    # This ensures dtype is preserved even after filtering
+    stats_df["frequency"] = pd.to_numeric(stats_df["frequency"], errors="coerce").fillna(0).astype("float64")
 
-    logger.info(f"Loaded {len(stats_df)} ingredients from precomputed index with calculated metrics")
+    logger.info(f"Loaded {len(stats_df)} ingredients from precomputed index")
 
     return stats_df
 
