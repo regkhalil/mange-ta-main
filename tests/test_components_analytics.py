@@ -22,7 +22,9 @@ try:
     )
 except ImportError:
     # Fallback si le module n'existe pas encore
+    analyze_recipe_complexity = None
     calculate_complexity_score = None
+    complexity_distribution = None
 
 try:
     from components.analytics.ingredient_health import (
@@ -32,6 +34,8 @@ try:
     )
 except ImportError:
     analyze_ingredient_healthiness = None
+    health_score_by_ingredient = None
+    ingredient_categories = None
 
 try:
     from components.analytics.nutrition_profiling import (
@@ -40,7 +44,9 @@ try:
         nutrition_recommendations,
     )
 except ImportError:
+    compare_nutrition_profiles = None
     create_nutrition_profile = None
+    nutrition_recommendations = None
 
 try:
     from components.analytics.time_analysis import (
@@ -50,10 +56,14 @@ try:
     )
 except ImportError:
     analyze_cooking_times = None
+    optimal_time_ranges = None
+    time_complexity_correlation = None
 
 try:
     from components.analytics.utils import aggregate_by_category, calculate_percentiles, normalize_data
 except ImportError:
+    aggregate_by_category = None
+    calculate_percentiles = None
     normalize_data = None
 
 
