@@ -52,17 +52,14 @@ def calculate_ingredient_health_index(df: pd.DataFrame, min_frequency: int = 100
         logger.error(f"Precomputed ingredient health index not found at {csv_path}")
         return pd.DataFrame(columns=["ingredient", "avg_score", "frequency", "std_score", "min_score", "max_score"])
 
-    stats_df = pd.read_csv(
-        csv_path,
-        dtype={
-            "ingredient": str,
-            "avg_score": float,
-            "frequency": float,  # Use float for more forgiving string conversion
-            "std_score": float,
-            "min_score": float,
-            "max_score": float,
-        },
-    )
+    # Read CSV without dtype specification - let pandas read naturally
+    stats_df = pd.read_csv(csv_path)
+
+    # DEFENSIVE FIX: Force numeric conversion - handles quotes, blanks, strings, etc.
+    stats_df["frequency"] = pd.to_numeric(stats_df["frequency"], errors="coerce")
+
+    # Drop any non-numeric rows (removes bad data instead of filling with 0)
+    stats_df = stats_df.dropna(subset=["frequency"])
 
     # Clean and format ingredient names for display
     stats_df["ingredient"] = stats_df["ingredient"].str.strip().str.title()
@@ -70,11 +67,9 @@ def calculate_ingredient_health_index(df: pd.DataFrame, min_frequency: int = 100
     # Filter by minimum frequency
     stats_df = stats_df[stats_df["frequency"] >= min_frequency]
 
-    # DEFENSIVE FIX: Ensure frequency is float64 after all operations
-    # This ensures dtype is preserved even after filtering
-    stats_df["frequency"] = pd.to_numeric(stats_df["frequency"], errors="coerce").fillna(0).astype("float64")
-
-    logger.info(f"Loaded {len(stats_df)} ingredients from precomputed index")
+    logger.info(
+        f"Loaded {len(stats_df)} ingredients from precomputed index (frequency dtype: {stats_df['frequency'].dtype})"
+    )
 
     return stats_df
 

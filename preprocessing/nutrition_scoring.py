@@ -583,30 +583,37 @@ def precompute_ingredient_health_index(
                 {
                     "ingredient": ingredient,
                     "avg_score": np.mean(scores_array),
+                    "median_score": np.median(scores_array),
                     "frequency": ingredient_counts[ingredient],
                     "std_score": np.std(scores_array),
                     "min_score": np.min(scores_array),
                     "max_score": np.max(scores_array),
+                    "consistency": 1 / (np.std(scores_array) + 0.1),  # Lower std = more consistent
                 }
             )
 
     # Sort by average score (healthiest first)
     ingredient_df = pd.DataFrame(ingredient_stats)
 
-    # Convert frequency to int immediately after creating DataFrame
-    ingredient_df["frequency"] = ingredient_df["frequency"].astype("int64")
+    # DEFENSIVE FIX: Force numeric conversion - handles any edge cases
+    ingredient_df["frequency"] = pd.to_numeric(ingredient_df["frequency"], errors="coerce")
+
+    # Drop any non-numeric rows (removes bad data instead of filling with defaults)
+    ingredient_df = ingredient_df.dropna(subset=["frequency"])
 
     ingredient_df = ingredient_df.sort_values("avg_score", ascending=False)
 
-    # Ensure proper dtypes before saving to CSV
+    # Ensure proper dtypes before saving to CSV (keep frequency as float for consistency)
     ingredient_df = ingredient_df.astype(
         {
             "ingredient": str,
             "avg_score": "float64",
-            "frequency": "int64",
+            "median_score": "float64",
+            "frequency": "float64",  # Keep as float64 instead of int64
             "std_score": "float64",
             "min_score": "float64",
             "max_score": "float64",
+            "consistency": "float64",
         }
     )
 
