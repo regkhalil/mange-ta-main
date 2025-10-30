@@ -784,13 +784,12 @@ def precompute_ingredient_health_index(
 
     # Step 5: Ensure proper dtypes before saving to CSV
     # Note: frequency is already int64 from .count(), convert to float64 for consistency
-    ingredient_df["frequency"] = ingredient_df["frequency"].astype("float64")
-
     ingredient_df = ingredient_df.astype(
         {
             "ingredient": str,
             "avg_score": "float64",
             "median_score": "float64",
+            "frequency": "float64",  # CRITICAL: Explicitly set dtype to prevent object type in production
             "std_score": "float64",
             "min_score": "float64",
             "max_score": "float64",
@@ -798,8 +797,8 @@ def precompute_ingredient_health_index(
         }
     )
 
-    # Save to CSV
-    ingredient_df.to_csv(output_path, index=False)
+    # Save to CSV with explicit float_format to ensure clean numeric output
+    ingredient_df.to_csv(output_path, index=False, float_format="%.10g")
     logger.info(f"Saved {len(ingredient_df)} ingredient stats to {output_path}")
 
     return ingredient_df
